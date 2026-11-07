@@ -53,7 +53,7 @@ Live timeout: **1.8 s** (measured Haiku 1.1 to 1.5 s per line, warm), then a ban
 Prompt: fixed system prompt (persona, rules, guardrails) plus a per-call stats snapshot and moment; plain-text output, filtered before speaking.
 
 ### Voice (ElevenLabs)
-Bank lines cached with `eleven_multilingual_v2`; live lines streamed with `eleven_flash_v2_5` (PCM 22,050 Hz, upsampled 2x) on one warm connection. Cache key sha1(text + voice + model), `assets/voice/cache/` (committed). Voice chosen by `tools/audition_voices.py`.
+**Voice: Edward (`zYcjlYFOd3taleS0gkk3`, ElevenLabs shared library, "Loud, Confident and Cocky"; 730-day notice period once added to My Voices).** Bank lines cached with `eleven_multilingual_v2`; live lines streamed with `eleven_flash_v2_5` (PCM 22,050 Hz, upsampled 2x) on one warm connection. Cache key sha1(text + voice + model), `assets/voice/cache/` (committed). Voice chosen by `tools/audition_voices.py`.
 Measured: Flash first audio ~240 ms warm. 17M characters available, so pre-voicing is affordable.
 
 ### Fallbacks

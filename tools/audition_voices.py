@@ -1,6 +1,7 @@
 """Audition ElevenLabs voices for GRIP-9000.
 
-    python tools/audition_voices.py              # generate (if needed) and play every candidate
+    python tools/audition_voices.py              # generate (if needed) and play round 2
+    python tools/audition_voices.py --round 1    # play round 1
     python tools/audition_voices.py --only lily  # replay one candidate
     python tools/audition_voices.py --list       # just print the candidates
 
@@ -26,12 +27,20 @@ OUT_DIR = os.path.join(ROOT, "logs", "audition")
 BANK_MODEL = "eleven_multilingual_v2"
 LIVE_MODEL = "eleven_flash_v2_5"
 
+# (round, name, voice_id, blurb). Round 2 voices come from the ElevenLabs shared library.
 CANDIDATES = (
-    ("daniel", "onwK4e9ZLuTAKqWW03F9", "British broadcaster, formal: cold machine reading your stats"),
-    ("george", "JBFqnCBsd6RMkjVDRZzb", "British, mature storyteller: posh condescension"),
-    ("lily", "pFZP5JQG7iQjIQuC4Bku", "British, velvety, confident: female smug AI"),
-    ("callum", "N2lVS1w4EtoT3dr4eOWO", "Husky trickster: the most 'villain'"),
-    ("eric", "cjVigY5qzO86Huf0OWal", "American, smooth: slick and patronising"),
+    (1, "daniel", "onwK4e9ZLuTAKqWW03F9", "British broadcaster, formal: cold machine reading your stats"),
+    (1, "george", "JBFqnCBsd6RMkjVDRZzb", "British, mature storyteller: posh condescension"),
+    (1, "lily", "pFZP5JQG7iQjIQuC4Bku", "British, velvety, confident: female smug AI"),
+    (1, "callum", "N2lVS1w4EtoT3dr4eOWO", "Husky trickster: the most 'villain'"),
+    (1, "eric", "cjVigY5qzO86Huf0OWal", "American, smooth: slick and patronising"),
+    (2, "eric", "cjVigY5qzO86Huf0OWal", "BENCHMARK: round 1 favourite"),
+    (2, "edward", "zYcjlYFOd3taleS0gkk3", "American, 'smug and charismatic, wicked charm' (83k uses)"),
+    (2, "matthew", "JlPfrZoXeAKnNaogINHc", "American, robotic and deadpan, smooth"),
+    (2, "james", "Myb1gsDenT3mlMlj7vib", "American, sarcastic, casual, skeptical"),
+    (2, "sigma", "bAq8AI9QURijOtmeFFqT", "American, calm space-computer AI"),
+    (2, "josh", "NXaTw4ifg0LAguvKuIwZ", "British RP, 'arrogant, smug' (16k uses)"),
+    (2, "nigel", "50lF5fQMqcxbDQOW6qOs", "British, sarcastic, cynical about everything"),
 )
 
 LINES = (
@@ -93,16 +102,21 @@ def play(name):
 def main():
     parser = argparse.ArgumentParser()
     parser.add_argument("--only", help="candidate name, e.g. lily")
+    parser.add_argument("--round", type=int, default=2, help="which round of candidates to play")
     parser.add_argument("--list", action="store_true")
     args = parser.parse_args()
 
     chosen = []
-    for name, voice_id, blurb in CANDIDATES:
-        if args.only is None or args.only == name:
+    for round_no, name, voice_id, blurb in CANDIDATES:
+        if args.only is not None:
+            if args.only == name:
+                chosen.append((name, voice_id, blurb))
+                break
+        elif round_no == args.round:
             chosen.append((name, voice_id, blurb))
     if args.list or not chosen:
-        for name, voice_id, blurb in CANDIDATES:
-            print(name.ljust(8) + voice_id + "  " + blurb)
+        for round_no, name, voice_id, blurb in CANDIDATES:
+            print("round " + str(round_no) + "  " + name.ljust(8) + voice_id + "  " + blurb)
         return
 
     os.makedirs(OUT_DIR, exist_ok=True)
