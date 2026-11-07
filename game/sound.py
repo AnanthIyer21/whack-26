@@ -116,24 +116,73 @@ def _swoosh():
     return out
 
 
+class _BandPass:
+    """A resonant band-pass filter (RBJ biquad); the centre frequency can move over time."""
+
+    def __init__(self, q):
+        self.q = q
+        self.x1 = self.x2 = self.y1 = self.y2 = 0.0
+        self.set(1000)
+
+    def set(self, f):
+        f = max(40.0, min(f, RATE * 0.45))
+        w = 2 * math.pi * f / RATE
+        alpha = math.sin(w) / (2 * self.q)
+        a0 = 1 + alpha
+        self.b0, self.b2 = alpha / a0, -alpha / a0
+        self.a1, self.a2 = -2 * math.cos(w) / a0, (1 - alpha) / a0
+
+    def __call__(self, x):
+        y = self.b0 * x + self.b2 * self.x2 - self.a1 * self.y1 - self.a2 * self.y2
+        self.x2, self.x1, self.y2, self.y1 = self.x1, x, self.y1, y
+        return y
+
+
 def _slice():
-    n, out, lp = _n(0.22), [], 0.0
+    """Juicy cut: a sharp blade 'shk', then a wet gurgling squelch, then a soft thud."""
+    n, out = _n(0.32), []
+    shk, wet, wet2 = _BandPass(2.5), _BandPass(6.0), _BandPass(8.0)
+    lp = 0.0
     for i in range(n):
         t = i / RATE
-        lp += (random.uniform(-1, 1) - lp) * 0.35
-        thump = math.sin(2 * math.pi * (180 - 400 * t) * t) * 0.6
-        out.append((lp * 0.8 + thump) * _env(i, n, 0.003, 3))
+        if i % 32 == 0:
+            shk.set(6000 - 30000 * t)                                   # quick downward 'shk'
+            wob = math.sin(2 * math.pi * 23 * t) * 0.5 + math.sin(2 * math.pi * 37 * t) * 0.5
+            wet.set(520 + 260 * wob - 600 * t)                           # bubbly squelch that sinks
+            wet2.set(1100 + 400 * wob)
+        noise = random.uniform(-1, 1)
+        blade = shk(noise) * 2.2 * max(0.0, 1 - t / 0.045) ** 2
+        squelch = (wet(noise) * 3.0 + wet2(noise) * 1.6) * min(1.0, t / 0.015) * max(0.0, 1 - t / 0.3) ** 1.6
+        lp += (noise - lp) * 0.02
+        thud = (math.sin(2 * math.pi * (140 - 200 * t) * t) * 0.5 + lp * 2) * max(0.0, 1 - t / 0.12) ** 3
+        out.append(math.tanh((blade + squelch + thud) * 1.3) * 0.85)
     return out
 
 
 def _draw():
-    n, out = _n(0.35), []
+    """Katana unsheathe: scabbard click, rising metal scrape, then a long bright ring."""
+    n, out = _n(1.1), []
+    scrape = _BandPass(9.0)
+    scrape2 = _BandPass(12.0)
+    partials = [(1870, 1.0, 2.2), (1877, 0.7, 2.4), (3120, 0.6, 3.0), (4410, 0.45, 3.8), (5930, 0.3, 4.6), (7350, 0.2, 5.5)]
+    ring_start = 0.20
     for i in range(n):
         t = i / RATE
-        f = 2400 + 1800 * t
-        v = math.sin(2 * math.pi * f * t) * 0.4 + math.sin(2 * math.pi * f * 1.51 * t) * 0.25
-        v += random.uniform(-1, 1) * 0.15 * max(0, 1 - t * 8)
-        out.append(v * _env(i, n, 0.005, 2.5))
+        noise = random.uniform(-1, 1)
+        click = noise * max(0.0, 1 - t / 0.006) * 0.9                      # blade leaving the scabbard
+        if i % 32 == 0:
+            scrape.set(2500 + 9000 * min(1.0, t / ring_start))              # pitch rises as it slides out
+            scrape2.set(3800 + 7000 * min(1.0, t / ring_start))
+        friction = 0.6 + 0.4 * math.sin(2 * math.pi * 60 * t) * math.sin(2 * math.pi * 7 * t)
+        sc_env = min(1.0, t / 0.03) * (1.0 if t < ring_start else max(0.0, 1 - (t - ring_start) / 0.06))
+        sc = (scrape(noise) * 1.8 + scrape2(noise) * 1.2) * friction * sc_env
+        ring = 0.0
+        if t >= ring_start:
+            rt = t - ring_start
+            for f, amp, decay in partials:
+                ring += amp * math.sin(2 * math.pi * f * rt) * math.exp(-decay * rt)
+            ring *= min(1.0, rt / 0.004) * 0.32
+        out.append(math.tanh((click + sc + ring) * 1.1) * 0.8)
     return out
 
 
@@ -211,3 +260,18 @@ def _pause():
 SYNTH = {"swoosh": _swoosh, "slice": _slice, "draw": _draw, "sheathe": _sheathe, "fuse": _fuse, "boom": _boom,
          "combo": _combo, "streak": _streak, "beep": _beep, "go": _go, "life_lost": _life_lost,
          "game_over": _game_over, "pause": _pause}
+
+
+if __name__ == "__main__":
+    # python -m game.sound            -> play every sound once
+    # python -m game.sound slice draw -> play just these (handy for tuning)
+    import sys
+    import time
+    pre_init()
+    pygame.init()
+    init()
+    names = sys.argv[1:] or list(VOLUME)
+    for name in names:
+        print(name)
+        play(name)
+        time.sleep(_sounds[name].get_length() + 0.4)
