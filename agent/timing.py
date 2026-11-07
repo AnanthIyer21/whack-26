@@ -68,6 +68,7 @@ class Decision:
         self.interrupt = interrupt
         self.final = final
         self.t = t
+        self.origin_t = t   # when the triggering event happened (for honest latency numbers)
 
     def __repr__(self):
         return ("Decision(" + self.key + ", p" + str(self.priority) + ", " + self.mood + ", "
@@ -91,6 +92,7 @@ class TimingEngine:
         self.halfway_done = False
         self.over = False
         self.pending_bomb_at = None
+        self.pending_bomb_t = 0.0
         self.pending_pause_at = None
         self.pause_line_spoken = False
         self.pause_long_done = False
@@ -115,11 +117,13 @@ class TimingEngine:
             self.pending_pause_at = None
             return self._consider("game_over", {
                 "score": event["score"], "reason": event["reason"], "best_combo": event["best_combo"],
+                "new_best": bool(event.get("new_best")),
             }, now)
         if kind in (shared.BOMB_HIT, shared.LIFE_LOST):
             # Bomb and its life_lost arrive together; settle briefly so we know the lives left.
             if self.pending_bomb_at is None:
                 self.pending_bomb_at = now + BOMB_SETTLE
+                self.pending_bomb_t = event["t"]
             return None
         if kind == shared.PAUSE:
             if self.pending_pause_at is None and not self.pause_line_spoken:
@@ -180,9 +184,13 @@ class TimingEngine:
                 self.log(now, "bomb took the last life: leave it to the game over roast")
                 return None
             if lives == 1:
-                return self._consider("last_life", {"bombs": self.stats.bombs}, now)
-            return self._consider("bomb_hit", {"lives": lives, "bombs": self.stats.bombs,
-                                               "streak_was": self.stats.best_streak}, now)
+                decision = self._consider("last_life", {"bombs": self.stats.bombs}, now)
+            else:
+                decision = self._consider("bomb_hit", {"lives": lives, "bombs": self.stats.bombs,
+                                                       "streak_was": self.stats.best_streak}, now)
+            if decision is not None:
+                decision.origin_t = self.pending_bomb_t
+            return decision
 
         if self.pending_pause_at is not None and now >= self.pending_pause_at:
             self.pending_pause_at = None
