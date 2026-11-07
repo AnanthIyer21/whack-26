@@ -2,8 +2,9 @@
 
 How pygame works, in one paragraph: every frame we (1) read input events from the OS,
 (2) update the game by dt seconds, (3) draw everything onto the screen surface, then
-(4) flip() to show it. clock.tick_busy_loop(60) waits just enough to hold 60 frames per
-second (plain tick() oversleeps on macOS and only reaches ~45).
+(4) flip() to show it. shared.FramePacer then waits until the next frame is due: a steady
+60 fps that, unlike clock.tick_busy_loop, doesn't hog Python's lock and starve the vision
+and rival threads (plain clock.tick oversleeps on macOS, ~39 fps).
 """
 import queue
 import time
@@ -37,7 +38,7 @@ class App:
         self.fullscreen = False
         if fullscreen:
             self.toggle_fullscreen()
-        self.clock = pygame.time.Clock()
+        self.pacer = shared.FramePacer(shared.FPS)
         self.glow = pygame.Surface((C.W, C.H), pygame.SRCALPHA).convert_alpha()  # translucent effects layer
         self.fonts = {}
         self._text_cache = {}
@@ -130,8 +131,9 @@ class App:
             self.scene.draw(self.screen, now)
             self._draw_corner_tags()
             pygame.display.flip()
-            self.clock.tick_busy_loop(C.FPS)
-        pygame.quit()
+            self.pacer.tick()
+        # No pygame.quit() here: main.py quits pygame after the other threads have stopped
+        # (the rival still needs the mixer to stop its voice channel).
 
     def poll_input(self, now):
         """Scenes call this once per frame. In mouse mode we also publish the HandState."""
@@ -156,6 +158,6 @@ class App:
     def _draw_corner_tags(self):
         self.text(self.screen, self.input.name, 20, (C.W - 8, C.H - 6), (200, 200, 200), "bottomright")
         if self.debug:
-            lines = [f"fps {self.clock.get_fps():5.1f}"] + self.scene.debug_lines()
+            lines = [f"fps {self.pacer.fps():5.1f}"] + self.scene.debug_lines()
             for i, s in enumerate(lines):
                 self.text(self.screen, s, 22, (8, C.H - 8 - 20 * (len(lines) - i)), (255, 255, 0))

@@ -25,3 +25,7 @@ try:
     run(shared.stop_event, mouse_sword=not a.fake_vision, fullscreen=a.fullscreen, camera=not a.no_camera)
 finally:
     shared.stop_event.set()
+    import time
+    import pygame
+    time.sleep(0.3)          # let the other threads stop before pygame goes away
+    pygame.quit()
