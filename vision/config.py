@@ -19,10 +19,10 @@ MAX_HANDS = 2
 MIN_DETECTION_CONF = 0.5
 MIN_PRESENCE_CONF = 0.5
 MIN_TRACKING_CONF = 0.5
-# MediaPipe's handedness assumes a mirrored (selfie) image. We feed it a
-# mirrored image, so in theory no flip is needed. Verified with
-# tools/camera_check.py: set True only if your right hand shows as "Left".
-FLIP_HANDEDNESS = False
+# MediaPipe's handedness label comes out the wrong way round on our mirrored
+# image (checked with tools/camera_check.py on Aaron's laptop, 2026-11-07:
+# right hand showed as "Left" with high confidence), so we flip it once.
+FLIP_HANDEDNESS = True
 # Two detections whose wrists are closer than this (normalised units) are the
 # same hand detected twice.
 DEDUPE_WRIST_DIST = 0.05
