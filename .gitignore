@@ -1,0 +1,18 @@
+# secrets
+.env
+# environments and caches
+.venv/
+__pycache__/
+*.pyc
+.pytest_cache/
+.DS_Store
+# runtime output
+logs/
+data/
+# never commit video
+*.mp4
+*.mov
+*.avi
+*.mkv
+*.webm
+*.m4v
