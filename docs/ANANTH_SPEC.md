@@ -78,3 +78,7 @@ Cached and pre-voiced lines < 300 ms; live Claude lines < 2.1 s.
 1. el_quota tool  2. pytest  3. halfway commentary  4. rematch memory  5. pre-fetch
 6. Claude for last life / time warning  7. ducking  8. Claude pattern call-outs  9. Claude streaming mid-game.
 Never cut: shared/, integration, merge testing, timing engine, voiced bank, subtitles, Claude game over roast.
+
+## Possible fixes (backlog, after real playtesting)
+- **Edward talks slightly slowly.** Option A: ElevenLabs `voice_settings={"speed": 1.1 to 1.15}` on both models (bank: re-run `tools/voice_bank.py` after adding it, ~5.6k characters; live: pass it in `LiveTTS.synth`). Option B: shorter word budgets (`LINE_WORDS` 18 -> 14). Try A first; check the Flash and bank voices still match.
+- **How much he talks:** tune after playing with the real game (`agent/timing.py` RULES, `GLOBAL_GAP`). `tools/fake_events.py` shows the effect instantly.
