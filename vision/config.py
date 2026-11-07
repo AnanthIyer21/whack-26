@@ -3,6 +3,7 @@
 Thresholds marked (calibrate) are starting values; we tune them on real hands
 with the debug window's sliders, then write the final numbers back here.
 """
+import sys
 from pathlib import Path
 
 # ---- Camera ---------------------------------------------------------------
@@ -10,8 +11,10 @@ CAMERA_INDEX = 0          # built-in webcam; try 1 if an external cam is plugged
 FRAME_WIDTH = 960       # 16:9 like the game window: no stretching. Same horizontal view as 4:3;
 FRAME_HEIGHT = 540      # 4:3 only adds ceiling/floor. 640x360 also fine (one-line change).
 TARGET_FPS = 30
-USE_DSHOW = True          # DirectShow on Windows: opens fast and honours MJPG
-USE_MJPG = True
+# DirectShow is Windows-only: on macOS it fails silently (no camera, no permission prompt),
+# so only use it (and MJPG) on Windows. macOS falls back to CAP_ANY = AVFoundation.
+USE_DSHOW = sys.platform == "win32"   # DirectShow on Windows: opens fast and honours MJPG
+USE_MJPG = sys.platform == "win32"
 
 # ---- MediaPipe ------------------------------------------------------------
 MODEL_PATH = Path(__file__).resolve().parent / "models" / "hand_landmarker.task"
