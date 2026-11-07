@@ -1,0 +1,17 @@
+{
+  "_note": "Hex colours. Owned by RBadiadka7; the game may read these or copy them.",
+  "trail": "#3CF2FF",
+  "trail_core": "#FFFFFF",
+  "bg_dark": "#0B0B1A",
+  "ui_text": "#F4F4F8",
+  "ui_accent": "#FF3CAC",
+  "ui_warning": "#FFD23C",
+  "bubble_fill": "#F4F4F8",
+  "bubble_text": "#0B0B1A",
+  "mood": {
+    "smug": "#FFD23C",
+    "rattled": "#3CF2FF",
+    "defensive": "#FF8A3C",
+    "gloating": "#FF3CAC"
+  }
+}
