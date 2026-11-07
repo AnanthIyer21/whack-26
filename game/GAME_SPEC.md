@@ -22,13 +22,16 @@ python -m game --fullscreen --debug # F toggles fullscreen at any time, D toggle
 - Writes: `events.put_nowait(dict)`, `set_sword_hand("left"|"right")`.
 - Any exception from teammates' code is caught and logged once. The game keeps running.
 - The fake rival (only when `shared` is missing) prints each event and answers some of them with canned lines, so the bubble and avatar can be tested.
+- **Queues passed to `game.run(events, rival_lines)` always win** over imported or fake ones. The fake rival only starts in standalone mode (`python -m game` with no `shared`).
+- The only vision-related code here is `fakes.py`, a stand-in for testing. Real vision is Aaron's.
 
 We don't write `shared/` or `main.py`. Ananth owns them (SPEC.md). Once they're on `staging`, we merge staging and check that `bridge.py` picks them up. The game also exposes `game.run(events, rival_lines)` for Ananth's `main.py`.
 
 ## 3. Screen and loop
 
 - Everything is drawn onto a fixed 1280x720 canvas, then scaled to the window (letterboxed in fullscreen). F toggles fullscreen.
-- 60 fps with `clock.tick(60)`. All movement uses `dt` (seconds, capped at 1/20 so a hitch never teleports fruit).
+- 60 fps with `clock.tick(60)`. **Simulation time**: fruit, particles and timers use `dt` (seconds, capped at 1/20 so a hitch never teleports fruit).
+- **Tracking time is separate**: tip speed uses the real time between two *valid input samples* (`HandState.t` for hand, `time.monotonic()` for mouse), never the capped `dt`. Freshness checks use `time.monotonic()`.
 - Scenes: **Title → Countdown → Play ⇄ Pause → GameOver → (Title or Countdown)**.
 
 ## 4. Title screen
@@ -49,7 +52,7 @@ class InputSource:
 ```
 
 - **MouseInput**: left button held = sword active. Base = mouse position. Angle = direction of motion (smoothed) while moving faster than 150 px/s; while still, Q and E rotate it at 4 rad/s.
-- **HandInput**: maps `blade_base` (0 to 1) to canvas pixels. `active = sword_active and sword_visible and fresh`. *Fresh* means `now - t < 0.25 s`.
+- **HandInput**: a new sample only exists when `HandState.t` changes. Vision may run at about 30 fps while the game runs at 60, so on frames with no new sample, cut checks are skipped (the blade is still drawn). Maps `blade_base` (0 to 1) to canvas pixels. `active = sword_active and sword_visible and fresh`. *Fresh* means `now - t < 0.25 s`.
   - The hand is lost (`not sword_visible` or stale): sheathe immediately, then **auto-pause after 1.0 s** of continuous loss (play scene only).
   - `pause_pose` turning true (rising edge) → pause. `pause_pose` must go false again before it can pause again.
 
@@ -62,6 +65,8 @@ class InputSource:
 - **Trail** (top juice priority): ribbon of the last ~0.12 s of tip and mid-blade positions, white-cyan with additive glow, tapering and fading. Only shows when the tip is moving fast.
 
 ## 8. Slicing (`game/slicing.py`, unit-tested)
+
+- **Blade history reset**: the previous blade segment and the trail are cleared on draw, tracking loss or recovery, resume, input-source switch, scene change, and whenever the gap between samples is more than 0.1 s. Cut checks need two consecutive valid samples, so a reset can never produce a screen-wide slash.
 
 - Each frame the old blade segment (base0→tip0) and the new one (base1→tip1) form a quad.
 - Tip speed = |tip1 − tip0| / dt. Cutting needs `speed ≥ CUT_SPEED` (start at **900 px/s**; in debug, - and = adjust it, and the live speed is shown).
@@ -92,10 +97,10 @@ class InputSource:
 ## 10. Rules (`game/rules.py`, unit-tested, no pygame)
 
 - **Score**: +points per fruit (doubled later by peace).
-- **Swing**: starts when tip speed ≥ `CUT_SPEED` and ends after 0.25 s below it, or when the sword is sheathed. **Combo** = 3 or more fruit cut in one swing, with less than 0.25 s between cuts. At the end of the swing: +n bonus, a "COMBO ×n" pop-up, and a `combo(n)` event.
+- **Combo**: a run of cuts, each less than 0.25 s after the previous one. The run ends when 0.25 s passes with no new cut, or the sword is sheathed, even if the blade keeps moving. Continued motion can then start a new run. A run of n ≥ 3 gives +n bonus, a "COMBO ×n" pop-up, and a `combo(n)` event. Any pending combo is settled before the final score is calculated (bomb, lives, quit).
 - **Streak**: fruit cut in a row without a drop. A `streak(n)` event at n = 5, 10, 15, and so on. A drop resets it, and `streak_broken(n)` is sent if n ≥ 5.
 - **Lives**: 5. Any uncut fruit leaving the bottom (golden included) → `miss(fruit, side)` (side from x < 0.5 of the screen width), then `life_lost(lives_left)`. Bombs leaving the screen are free. 0 lives → game over (reason `lives`).
-- **Bomb hit** → time freezes 0.4 s with a white flash, then explosion and screen shake for 1.2 s, then `bomb_hit` and `game_over(reason="bomb")`.
+- **Bomb hit** → gameplay locks **immediately**: no slicing, spawning or life loss from then on. `bomb_hit` is sent once, right away. Time freezes 0.4 s with a white flash, then explosion and screen shake for 1.2 s, then `game_over(reason="bomb")` is sent once. The same "game over once" guard applies to the lives and quit endings.
 - Q on the pause screen → `game_over(reason="quit")`, back to title.
 
 ## 11. Pause
@@ -119,8 +124,8 @@ class InputSource:
 ## 13. Game over
 
 - Shows score, best combo, time survived, a "NEW BEST" flag (session best), and the reason ("BOOM" or "Out of lives").
-- **Final roast**: the `game_over` event carries `round_id` and `want_final_roast: True`. The screen shows "rival is thinking…" dots and waits for a rival line with `kind == "final_roast"` and the matching `round_id`. It waits up to 6 s, then shows a canned roast picked using the game stats.
-- Normal lines and lines from old rounds never become the final roast.
+- **Final roast** (works with or without rival support): when the game ends, the game throws away any queued rival lines, sends `game_over`, and shows "rival is thinking…" dots. The next rival line that arrives within 6 s becomes the final roast. If a line has `kind`/`round_id` and they don't match this round, it's skipped. After 6 s, a canned roast picked using the game stats is shown instead.
+- Starting a new round throws away any queued lines, so an old roast never shows up in the next game.
 - **Play Again** (Space, Enter, click or fist) works at any moment. T goes back to Title.
 
 ## 14. Events sent (all `put_nowait`, all include `"t": time.monotonic()` and `"round_id": int`)
@@ -128,11 +133,11 @@ class InputSource:
 `game_start` · `sword_drawn` · `sword_sheathed` · `slice{fruit}` · `miss{fruit, side}` · `combo{n}` · `streak{n}` · `streak_broken{n}` · `life_lost{lives_left}` · `pause{reason}` · `resume` · `bomb_hit` · `game_over{score, best_combo, duration, reason, want_final_roast}`.
 Extension: `gesture{name}`, `special_move{name, fruits_hit}`.
 
-## 15. Proposed interface additions (agree with the team first; all additive and optional)
+## 15. Proposed interface additions (all optional; the game works without any of them)
 
-1. `"round_id": int` on every event (the round counter, starting at 1).
-2. `game_over` gets `"want_final_roast": true`. `reason` is one of `"bomb" | "lives" | "quit"`.
-3. `rival_lines` items may include `"kind": "final_roast"` and `"round_id": int`. Items without them are normal lines.
+1. `"round_id": int` on every event. This is harmless to the rival; nothing depends on it.
+2. `game_over` gets `"want_final_roast": true`. `reason` is one of `"bomb" | "lives" | "quit"` (SPEC.md already has `reason`).
+3. Optional, for Ananth: `rival_lines` items may include `"kind": "final_roast"` and `"round_id"`. Without them, the game just takes the next line after `game_over` (section 13).
 4. `pause` gets `"reason": "pose" | "key" | "hand_lost"`.
 5. Ask Aaron: **resume = fist held 0.5 s while paused**. The game handles the timing; vision just keeps publishing `sword_active`. `pause_pose` should drop back to false once the pose is released.
 6. `BLADE_LENGTH` in `shared` as a fraction of screen height (0.30 to start).
@@ -178,7 +183,8 @@ Extension 1 → webcam preview → leaderboard → sound polish. Protected: the 
 
 The team checkpoint times in SPEC.md have slipped (it was 16:54 when this was written), so the dates below are our targets.
 
-- **A, ASAP (~18:00)**: `python -m game` plays with the mouse: title (hand choice), countdown, fruit, katana with trail, swept slice with speed gate, halves and juice, score, combos, streaks, 5 lives, bomb flow, game over. Every event appears in the fake rival's console with the right fields. Tests pass.
+- **A1, playable core (ASAP, ~17:45)**: `python -m game` with the mouse: title (hand choice), countdown, fruit as plain circles, a simple blade line, swept slice with speed gate, score, combos, streaks, 5 lives, bombs ending the game, game over with Play Again. Every event appears in the fake rival's console with the right fields. Tests pass.
+- **A2, visual polish (~18:15)**: katana drawing, draw and fade animation, glowing trail, halves, juice particles, splats, pop-ups, bomb freeze, flash and shake.
 - **B, 18:30**: pause screen with all three triggers and fist resume. HandInput against the fake (scripted fist and swing), including the lost-hand auto-pause. Rival avatar and bubble driven by fake lines. Final-roast flow with round_id. Debug overlay.
 - **C, 22:00**: merged with Ananth's `shared/` and Aaron's vision on `staging`. Playable with the real sword. `CUT_SPEED` and `BLADE_LENGTH` tuned on the demo laptop. RB's assets drop in.
 - **Overnight**: extension 1 effects (keys 1–6, spec them then), juice polish, webcam preview, leaderboard.
