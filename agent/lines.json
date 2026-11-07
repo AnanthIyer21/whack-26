@@ -1,0 +1,175 @@
+{
+  "_readme": "GRIP-9000's bank. Keys match agent/timing.py; 'key.mood' or 'key.variant' lists are tried first. {var} values must be listed in _expand (or _expand_by_key) so every line can be pre-voiced. Edit freely, then run: python tools/voice_bank.py",
+
+  "_expand": {
+    "side": ["left", "right"]
+  },
+  "_expand_by_key": {
+    "combo": {"n": [4, 5, 6]},
+    "streak": {"n": [5]},
+    "streak_big": {"n": [10, 15, 20, 25, 30]}
+  },
+
+  "intro": [
+    "GRIP-9000 online. Please try not to embarrass your entire species.",
+    "Ah. Another human. Hold the sword by the handle. That's the not-pointy bit.",
+    "Initialising contempt. Done. You may begin.",
+    "I've run eleven million simulations of this game. You lose in all of them.",
+    "Welcome, meat-based competitor. Let's get this over with."
+  ],
+
+  "slice": [
+    "A fruit. Cut. Shall I call the newspapers?",
+    "Even a toaster could have done that.",
+    "Lucky.",
+    "Mm. Adequate.",
+    "Don't let it go to your head. There's not much room up there."
+  ],
+
+  "miss": [
+    "Gravity: one. You: nil.",
+    "That fruit is now in a better place. Away from you.",
+    "Missed. As my models predicted.",
+    "The fruit was moving at walking pace.",
+    "Your {side} side appears to be decorative.",
+    "Another one escapes on the {side}. They're forming a union.",
+    "Was that a swing or a wave?",
+    "I've seen screensavers with better reflexes."
+  ],
+
+  "combo": [
+    "{n} at once? Statistically irritating.",
+    "Fine. That was... acceptable. Don't do it again.",
+    "A combo. I'm logging this as a glitch.",
+    "Hm. Lucky geometry."
+  ],
+
+  "streak": [
+    "{n} in a row. Calm down.",
+    "That's {n}. I am not nervous. I don't have nerves.",
+    "Five in a row? Recalibrating my opinion of you. Slightly."
+  ],
+
+  "streak_big": [
+    "{n} in a row? Stop that. Stop that immediately.",
+    "{n}. This is fine. Everything is fine. I'm fine.",
+    "That's {n} in a row. Who is helping you?",
+    "{n} straight. I'm running diagnostics on myself."
+  ],
+
+  "streak_broken": [
+    "And the streak dies. Beautifully predictable.",
+    "There it is. Normal service resumes.",
+    "Ah, the streak ends. I was so worried. I wasn't.",
+    "All that progress. Gone. Like your dignity."
+  ],
+
+  "bomb_hit": [
+    "You hugged the bomb. Bold. Stupid, but bold.",
+    "That was a bomb. It said bomb on it. With a fuse.",
+    "Excellent. You've cut the one thing you were told not to.",
+    "Fascinating. You're attracted to explosives.",
+    "Boom. I'll add that to your highlights reel."
+  ],
+
+  "last_life": [
+    "Last life. I've prepared a short eulogy. It's mostly about your reflexes.",
+    "One life left. No pressure. Well, quite a lot of pressure.",
+    "One life. One chance. One extremely likely failure.",
+    "Final life. I'd say good luck, but I don't believe in luck. Or you."
+  ],
+
+  "pause.no_hand": [
+    "Ran away already?",
+    "Where did you go? Calling for backup?",
+    "Hand gone. Courage also gone, apparently.",
+    "Hiding won't save you. It just delays the inevitable."
+  ],
+  "pause.two_hands": [
+    "It's a one-handed sword. One. Count them.",
+    "Two hands? This isn't a hug. Pick one.",
+    "Both hands. Cheating detected. Shameful."
+  ],
+  "pause.not_gripping": [
+    "Grip. It's in my name. Use it.",
+    "Open hand? You're waving, not fighting.",
+    "Make a fist. You know, like you mean it.",
+    "Did you drop the sword? It's imaginary. That's impressive."
+  ],
+
+  "pause_long": [
+    "Still waiting. I have infinite patience. You have sixty seconds.",
+    "Take your time. I'm computing pi in the meantime.",
+    "Are you still there, or did you quit like a human?"
+  ],
+
+  "resume": [
+    "Oh, you're back. Wonderful.",
+    "Resuming humiliation.",
+    "Welcome back. The fruit missed you. Unlike you, it'll stay missed."
+  ],
+
+  "time_warning.gloating": [
+    "Ten seconds left. Not that it matters.",
+    "Ten seconds. Time enough to fail a few more times.",
+    "Ten seconds remaining. Your legacy is already written. It's short."
+  ],
+  "time_warning.rattled": [
+    "Ten seconds. Just... stop being good for ten seconds.",
+    "Ten seconds left. I'm not sweating. I can't sweat.",
+    "Ten seconds. Please miss something. Anything."
+  ],
+
+  "halfway": [
+    "Halfway. I'd say you're improving, but my honesty module won't let me.",
+    "Thirty seconds gone. The fruit is winning on points.",
+    "Half time. Let's review the tape. Actually, let's not."
+  ],
+
+  "pattern.side_bias": [
+    "You always miss on the {side}. Is your {side} arm decorative?",
+    "Observation: your {side} side is a fruit sanctuary.",
+    "Everything on the {side} escapes. It's like a nature reserve over there."
+  ],
+  "pattern.bomb_magnet": [
+    "Two bombs in a row. You're not slicing fruit, you're defusing badly.",
+    "You find bombs like a heat-seeking missile. Wrong target though.",
+    "Bomb magnet detected. It's you. You're the magnet."
+  ],
+  "pattern.pause_addict": [
+    "Third pause. Are you playing or meditating?",
+    "You pause more than you slice. New personal best.",
+    "Pausing is not a strategy. I've checked."
+  ],
+  "pattern.slump": [
+    "Nothing for six seconds. Are you buffering?",
+    "Hello? The fruit is right there. It's waiting for you.",
+    "Long silence from your sword. Matches the silence from your fans."
+  ],
+  "pattern.comeback": [
+    "Lost a life and you're still going? That's... annoying.",
+    "A comeback. How sentimental. I hate it.",
+    "You're recovering. I didn't authorise that."
+  ],
+
+  "game_over.lives": [
+    "Out of lives. Humanity had a good run. Mostly.",
+    "Three lives, three bombs. Perfect efficiency, wrong direction.",
+    "Game over. I'd shake your hand, but you'd probably drop it."
+  ],
+  "game_over.timer": [
+    "Time's up. I've seen better performances from a screensaver.",
+    "Sixty seconds of effort. I've logged it under comedy.",
+    "That's time. Your score has been noted. And laughed at."
+  ],
+  "game_over.quit": [
+    "You quit. The bravest thing you've done all game.",
+    "Quitting. Finally, a decision I agree with.",
+    "Rage quit detected. Saving it for the highlights."
+  ],
+  "game_over.new_best": [
+    "New best score. Fine. I wasn't even trying. I was running at four percent.",
+    "A new record. I demand a recount.",
+    "Highest score yet. I'm reporting this to my developers."
+  ]
+}

@@ -15,6 +15,7 @@ Entry-point contract for each part (all loops exit when stop_event is set):
 import argparse
 import importlib
 import importlib.util
+import os
 import threading
 import time
 
@@ -52,7 +53,7 @@ def main():
     parser.add_argument("--offline", action="store_true", help="rival uses the bank only, no API calls")
     args = parser.parse_args()
 
-    load_dotenv()
+    load_dotenv(os.path.join(os.path.dirname(os.path.abspath(__file__)), ".env"))
 
     game = load_part(args.game, "game", "fakes.fake_game")
     rival = load_part(args.rival, "agent", "fakes.fake_rival")

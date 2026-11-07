@@ -29,4 +29,4 @@ Each part exposes `run(stop_event, ...)`; see the top of `main.py`. Shared inter
 - OpenCV must be `opencv-python-headless` 4.12. OpenCV 5 and the GUI builds bundle SDL, which clashes with pygame. So no `cv2.imshow`: draw debug views in pygame.
 - `mediapipe` 1.2.2 has no `mp.solutions.hands`: use the Tasks API (`HandLandmarker` with a `hand_landmarker.task` model file).
 - `pygame.font.SysFont` hangs for seconds on macOS: load a TTF from `assets/` (or `pygame.font.Font(None, size)`).
-- `clock.tick(60)` only reaches ~45 fps on macOS: use `clock.tick_busy_loop(60)`.
+- Frame pacing: use `shared.FramePacer(shared.FPS)` and call `pacer.tick()` each frame. `clock.tick(60)` only reaches ~39 fps on macOS, and `clock.tick_busy_loop(60)` holds Python's lock while spinning, starving the vision and rival threads (~60% less CPU for them).

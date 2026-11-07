@@ -69,7 +69,7 @@ def run(stop_event, mouse_sword=False):
     # Built-in font: pygame.font.SysFont hangs for seconds on macOS (it shells out to X11 fc-list).
     font = pygame.font.Font(None, 22)
     big = pygame.font.Font(None, 30)
-    clock = pygame.time.Clock()
+    pacer = shared.FramePacer(shared.FPS)
 
     script_index = 0
     next_event_at = time.monotonic() + SCRIPT[0][0]
@@ -161,6 +161,6 @@ def run(stop_event, mouse_sword=False):
             screen.blit(label, (30, HEIGHT - 60))
 
         pygame.display.flip()
-        # tick() oversleeps on macOS (~45 fps); tick_busy_loop holds 60.
-        clock.tick_busy_loop(shared.FPS)
-        fps_text = "fps            " + str(round(clock.get_fps()))
+        # FramePacer: steady 60 fps without starving the vision and rival threads.
+        pacer.tick()
+        fps_text = "fps            " + str(round(pacer.fps()))
