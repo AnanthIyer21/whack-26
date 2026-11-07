@@ -1,0 +1,3 @@
+# Installed with --no-deps so it does not pull in opencv-contrib-python (SDL clash with pygame).
+# mediapipe 1.2.2 has NO mp.solutions.hands: use the Tasks API (HandLandmarker + hand_landmarker.task).
+mediapipe==1.2.2
