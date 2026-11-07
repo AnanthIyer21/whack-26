@@ -137,3 +137,21 @@ class BladeSmoother:
                 self._recover_t = None
         self.angle = self.ang(target, t)
         return (float(base[0]), float(base[1])), self.angle
+
+    def coast(self, t):
+        """No detection this frame (inside the grace period): keep the blade moving
+        along its last smoothed velocity, slowing down, so a fast swing still cuts.
+
+        Moves the position filter's own state too, so when the hand is found again
+        the smoothing carries on from here instead of snapping back.
+        """
+        f = self.pos
+        if f._x is None or f._t is None:
+            return None
+        dt = t - f._t
+        if dt <= 0:
+            return (float(f._x[0]), float(f._x[1])), self.angle
+        f._dx = f._dx * math.exp(-config.COAST_DAMPING * dt)
+        f._x = np.clip(f._x + f._dx * dt, 0.0, 1.0)
+        f._t = t
+        return (float(f._x[0]), float(f._x[1])), self.angle

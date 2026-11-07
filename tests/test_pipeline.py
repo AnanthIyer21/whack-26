@@ -66,3 +66,22 @@ def test_blade_points_up_for_upright_fist_in_knuckle_mode(monkeypatch):
     assert math.isclose(out[-1]["blade_angle"], -math.pi / 2, abs_tol=0.05)
     bx, by = out[-1]["blade_base"]
     assert 0.3 < bx < 0.5 and 0.4 < by < 0.6
+
+
+def test_blade_coasts_through_a_dropout_then_carries_on():
+    # Fist sweeping right at ~2.4 screen-widths per second, then 3 missed frames.
+    moving = [[detected(fist(), x=0.2 + 0.08 * i, y=0.5)] for i in range(8)]
+    out = run(moving + [[]] * 3 + [[detected(fist(), x=0.2 + 0.08 * 11, y=0.5)]])
+    xs = [s["blade_base"][0] for s in out]
+    held = xs[7:11]
+    assert all(b > a for a, b in zip(held, held[1:])), xs     # keeps moving right while held
+    assert xs[11] >= xs[10] - 1e-6, xs                       # no snap back on re-acquire
+    assert all(s["sword_active"] for s in out[1:]), "grip must survive the dropout"
+
+
+def test_coasting_off_freezes_blade(monkeypatch):
+    monkeypatch.setattr(config, "COAST", False)
+    moving = [[detected(fist(), x=0.2 + 0.08 * i, y=0.5)] for i in range(8)]
+    out = run(moving + [[]] * 3)
+    xs = [s["blade_base"][0] for s in out]
+    assert xs[8] == xs[9] == xs[10]

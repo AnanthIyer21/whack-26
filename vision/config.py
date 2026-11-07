@@ -47,6 +47,10 @@ OPEN_BELOW = 0.30         # outside GRIP: <= this is OPEN, otherwise UNCLEAR
 # ---- Hand-count grace ----------------------------------------------------
 LOST_GRACE_S = 0.150      # hold the last state this long after the hand vanishes
 TWO_HANDS_FRAMES = 3      # second hand must be seen this many frames in a row
+# During a dropout (inside the grace period) the blade keeps moving at its last
+# speed, slowing by exp(-COAST_DAMPING * t): after 150 ms it's at ~half speed.
+COAST = True
+COAST_DAMPING = 5.0
 
 # ---- Blade ---------------------------------------------------------------
 # "grip": real sword grip, blade across the fist (pinky side -> out past the thumb),

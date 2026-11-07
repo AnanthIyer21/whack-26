@@ -2,7 +2,7 @@
 import math
 import time
 
-from vision import geometry
+from vision import config, geometry
 from vision.stabiliser import GRIP, OPEN, UNCLEAR, BladeSmoother, GripStabiliser, HandCounter
 from vision.tracker import HandTracker
 
@@ -52,6 +52,10 @@ class VisionPipeline:
             self._last_base, self._last_angle = self.blade.update(raw_base, raw_angle, foreshorten, t)
         else:
             p2 = time.perf_counter()
+            if held and config.COAST:
+                coasted = self.blade.coast(t)
+                if coasted is not None:
+                    self._last_base, self._last_angle = coasted
         p3 = time.perf_counter()
 
         tracked = sword is not None
