@@ -41,6 +41,8 @@ def setup(events=None, rival_lines=None):
         g["rival_lines"] = queue.Queue()
     standalone = SOURCE == "fakes" and events is None and rival_lines is None
     print(f"[game.bridge] using {SOURCE}, standalone={standalone}")
+    if standalone:
+        _src.start_fake_rival(g["events"], g["rival_lines"])
 
 
 def get_hand_state():

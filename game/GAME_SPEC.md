@@ -124,7 +124,7 @@ class InputSource:
 ## 13. Game over
 
 - Shows score, best combo, time survived, a "NEW BEST" flag (session best), and the reason ("BOOM" or "Out of lives").
-- **Final roast** (works with or without rival support): when the game ends, the game throws away any queued rival lines, sends `game_over`, and shows "rival is thinking…" dots. The next rival line that arrives within 6 s becomes the final roast. If a line has `kind`/`round_id` and they don't match this round, it's skipped. After 6 s, a canned roast picked using the game stats is shown instead.
+- **Final roast**: when the game ends, the game throws away any queued rival lines, sends `game_over`, and shows "rival is thinking…" dots. Only a line with `"kind": "final_roast"` becomes the roast (if it has a `round_id`, it must match). After 6 s, a canned roast picked using the game stats is shown instead. Untagged lines are never used, because a late mid-game taunt can't be told apart from the roast (this was seen in testing).
 - Starting a new round throws away any queued lines, so an old roast never shows up in the next game.
 - **Play Again** (Space, Enter, click or fist) works at any moment. T goes back to Title.
 
@@ -137,10 +137,11 @@ Extension: `gesture{name}`, `special_move{name, fruits_hit}`.
 
 1. `"round_id": int` on every event. This is harmless to the rival; nothing depends on it.
 2. `game_over` gets `"want_final_roast": true`. `reason` is one of `"bomb" | "lives" | "quit"` (SPEC.md already has `reason`).
-3. Optional, for Ananth: `rival_lines` items may include `"kind": "final_roast"` and `"round_id"`. Without them, the game just takes the next line after `game_over` (section 13).
+3. **For Ananth (one field):** the reply to `game_over` has `"kind": "final_roast"` (it may also copy `round_id`). Without it, the game shows its canned roast after 6 s.
 4. `pause` gets `"reason": "pose" | "key" | "hand_lost"`.
 5. Ask Aaron: **resume = fist held 0.5 s while paused**. The game handles the timing; vision just keeps publishing `sword_active`. `pause_pose` should drop back to false once the pose is released.
 6. `BLADE_LENGTH` in `shared` as a fraction of screen height (0.30 to start).
+7. **For Aaron:** `blade_angle` uses screen convention: `atan2(dy, dx)` with y pointing down, so 0 = pointing right, -pi/2 = pointing straight up, and positive = clockwise on screen (after the selfie mirror).
 
 ## 16. Sound and art slots (`game/assets.py`)
 

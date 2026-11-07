@@ -16,6 +16,9 @@ class App:
         self.input_mode = input_mode
         self.debug = debug
         self.sword_hand = "right"
+        self.round_id = 0
+        self.best = 0
+        self.last_events = []     # shown in the debug overlay
         self.running = True
         self.fonts = {
             "big": pygame.font.Font(None, 110),
