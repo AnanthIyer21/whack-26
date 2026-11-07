@@ -84,14 +84,19 @@ class Voice:
 
     def say_cached(self, text, mood, final=False):
         """Play a bank line now (cutting off anything playing). Returns its duration in s."""
-        duration = None
+        sound = None
         if self.channel is not None:
             import pygame
             sound = self._sound_for(text, pygame)
-            if sound is not None:
-                self.channel.stop()
-                self.channel.play(sound)
-                duration = sound.get_length()
+        return self.say_sound(sound, text, mood, final)
+
+    def say_sound(self, sound, text, mood, final=False):
+        """Play a ready Sound (or show subtitle only if None). Returns its duration in s."""
+        duration = None
+        if self.channel is not None and sound is not None:
+            self.channel.stop()
+            self.channel.play(sound)
+            duration = sound.get_length()
         if duration is None:
             duration = max(1.5, len(text.split()) / WORDS_PER_SECOND)
         self.current_text = text

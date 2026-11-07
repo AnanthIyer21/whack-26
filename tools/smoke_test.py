@@ -10,12 +10,16 @@ needed unless you pass --vision real.
 import argparse
 import os
 import sys
+
+from dotenv import load_dotenv
 import threading
 import time
 
 os.environ.setdefault("SDL_VIDEODRIVER", "dummy")
 os.environ.setdefault("SDL_AUDIODRIVER", "dummy")
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+
+load_dotenv(os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), ".env"))
 
 import pygame  # noqa: E402
 
@@ -116,7 +120,7 @@ def run_program(args):
     threads = []
     for name, target, kwargs in (
         ("vision", vision.run, {"stop_event": stop}),
-        ("rival", rival.run, {"stop_event": stop, "offline": True}),
+        ("rival", rival.run, {"stop_event": stop, "offline": not args.online}),
     ):
         t = threading.Thread(target=target, name=name, kwargs=kwargs, daemon=True)
         t.start()
@@ -164,6 +168,7 @@ def main():
     parser.add_argument("--game", choices=("fake", "real"), default="fake")
     parser.add_argument("--rival", choices=("fake", "real"), default="fake")
     parser.add_argument("--seconds", type=float, default=12.0)
+    parser.add_argument("--online", action="store_true", help="let the real rival call Claude and ElevenLabs")
     args = parser.parse_args()
 
     check_hand_state_atomic()

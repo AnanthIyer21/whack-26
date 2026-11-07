@@ -197,3 +197,13 @@ def test_unspoken_pattern_is_offered_again():
     detector.mark_spoken("side_bias")
     for name, vars_ in detector.check(stats, 9.5):
         assert name != "side_bias"
+
+
+def test_persona_filter():
+    from agent.persona import filter_line
+    assert filter_line("Ah, a bomb. Lives down to two, and your accuracy stands at a flawless 100 percent. "
+                       "Do try not to feel too pleased with yourself.") == \
+        "Ah, a bomb. Lives down to two, and your accuracy stands at a flawless 100 percent."
+    assert filter_line("You missed. Hell of a swing.") is None          # mild swearing rejected
+    assert filter_line("*sighs* Missed again.") == "Missed again."       # stage directions stripped
+    assert filter_line('"Quoted line here, please."') == "Quoted line here, please."
