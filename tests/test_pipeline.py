@@ -60,7 +60,8 @@ def test_dropout_grace_keeps_playing_then_reports_no_hand():
     assert out[-1]["confidence"] == 0.0
 
 
-def test_blade_points_up_for_upright_fist():
+def test_blade_points_up_for_upright_fist_in_knuckle_mode(monkeypatch):
+    monkeypatch.setattr(config, "BLADE_MODE", "knuckle")
     out = run([[detected(fist(), x=0.4, y=0.6)]] * 10)
     assert math.isclose(out[-1]["blade_angle"], -math.pi / 2, abs_tol=0.05)
     bx, by = out[-1]["blade_base"]

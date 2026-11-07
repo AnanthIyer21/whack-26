@@ -55,29 +55,56 @@ def test_normalise():
     assert np.allclose(nl[:, 0], -n[:, 0])
 
 
-def test_blade_angle_upright_fist_points_up():
+def test_knuckle_mode_upright_fist_points_up():
     h = detected(fist())
-    a = geometry.blade_angle(h.img, 640, 480)
+    a = geometry.blade_angle(h.img, 640, 480, mode="knuckle")
     assert a == pytest.approx(-math.pi / 2, abs=0.05)
+
+
+def test_grip_mode_blade_runs_across_the_fist_out_of_the_thumb_side():
+    # Synthetic right hand, palm up: index knuckle is at -x (thumb side), pinky at +x.
+    h = detected(fist())
+    a = geometry.blade_angle(h.img, 640, 480, mode="grip")
+    assert abs(abs(a) - math.pi) < 0.25          # horizontal, pointing towards the thumb side (-x)
+    # Mirror it into a left hand: blade must still exit the thumb side (now +x).
+    left = detected(fist() * np.array([-1, 1, 1]), label="Left")
+    assert abs(geometry.blade_angle(left.img, 640, 480, mode="grip")) < 0.25
+
+
+def test_grip_base_is_inside_the_fist():
+    h = detected(fist(), x=0.3, y=0.7)
+    base = geometry.blade_base(h.img, mode="grip")
+    knuckles = h.img[[5, 9, 13, 17], :2].mean(axis=0)
+    palm = np.linalg.norm(h.img[9, :2] - h.img[0, :2])
+    # The grip centre sits in the fist, right by the knuckle line (not out past the fingers).
+    assert np.linalg.norm(base - knuckles) < 0.3 * palm
+    xs = h.img[[5, 17], 0]
+    assert xs.min() <= base[0] <= xs.max()     # between the index and pinky sides
 
 
 def test_blade_angle_uses_pixel_proportions():
     img = np.zeros((21, 3), np.float32)
     img[0, :2] = (0.5, 0.5)
     img[9, :2] = (0.6, 0.6)   # equal in normalised units, but 640 wide vs 480 tall
-    a = geometry.blade_angle(img, 640, 480)
+    a = geometry.blade_angle(img, 640, 480, mode="knuckle")
     assert a == pytest.approx(math.atan2(0.1 * 480, 0.1 * 640))
 
 
-def test_blade_base_is_knuckle_centroid():
+def test_knuckle_mode_base_is_knuckle_centroid():
     h = detected(open_hand(), x=0.3, y=0.7)
-    assert np.allclose(geometry.blade_base(h.img), h.img[[5, 9, 13, 17], :2].mean(axis=0))
+    assert np.allclose(geometry.blade_base(h.img, mode="knuckle"), h.img[[5, 9, 13, 17], :2].mean(axis=0))
 
 
-def test_foreshortening():
-    assert geometry.foreshortening(open_hand()) == pytest.approx(1.0, abs=0.01)
+def test_foreshortening_knuckle_mode():
+    assert geometry.foreshortening(open_hand(), mode="knuckle") == pytest.approx(1.0, abs=0.01)
     pointing_at_camera = open_hand(rotation=ROT_X(80))
-    assert geometry.foreshortening(pointing_at_camera) < config.SIDE_ON_RATIO
+    assert geometry.foreshortening(pointing_at_camera, mode="knuckle") < config.SIDE_ON_RATIO
+
+
+def test_foreshortening_grip_mode():
+    assert geometry.foreshortening(fist(), mode="grip") > 0.8
+    thumb_at_camera = fist(rotation=rot_y(80))   # blade axis now points into the camera
+    assert geometry.foreshortening(thumb_at_camera, mode="grip") < config.SIDE_ON_RATIO
 
 
 def test_grip_certainty():

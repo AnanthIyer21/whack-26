@@ -73,24 +73,43 @@ def grip_certainty(score):
     return float(np.clip(abs(score - mid) / half, 0.0, 1.0))
 
 
-def blade_base(img):
-    """Centroid of the 4 knuckles in normalised mirrored image coords (x right, y down)."""
-    return img[KNUCKLES, :2].mean(axis=0).astype(np.float64)
+# Blade modes (config.BLADE_MODE):
+#   "grip"    - real sword grip (Aaron's choice): the handle runs through the curled
+#               fingers, the blade runs across the fist from the pinky side and out
+#               past the thumb. Base = centre of the grip.
+#   "knuckle" - original spec: base at the knuckles, blade along wrist -> middle knuckle.
+GRIP_POINTS = np.array([5, 9, 13, 17, 6, 10, 14, 18])   # knuckles + curled middle joints
+_AXIS = {
+    "grip": (np.array([17, 18]), np.array([5, 6])),       # pinky side -> index side
+    "knuckle": (np.array([0]), np.array([9])),            # wrist -> middle knuckle
+}
 
 
-def blade_angle(img, width, height):
-    """Angle of wrist (0) -> middle knuckle (9) in true pixel proportions, y down.
+def blade_base(img, mode=None):
+    """Where the blade sits in normalised mirrored image coords (x right, y down)."""
+    mode = mode or config.BLADE_MODE
+    idx = GRIP_POINTS if mode == "grip" else KNUCKLES
+    return img[idx, :2].mean(axis=0).astype(np.float64)
 
-    0 = pointing right, +pi/2 = down, upright fist ~ -pi/2.
+
+def _axis(pts, mode):
+    a, b = _AXIS[mode or config.BLADE_MODE]
+    pts = np.asarray(pts, dtype=np.float64)
+    return pts[b].mean(axis=0) - pts[a].mean(axis=0)
+
+
+def blade_angle(img, width, height, mode=None):
+    """Blade direction in true pixel proportions, y down.
+
+    0 = pointing right, +pi/2 = down, -pi/2 = up.
     """
-    dx = (img[9, 0] - img[0, 0]) * width
-    dy = (img[9, 1] - img[0, 1]) * height
-    return float(np.arctan2(dy, dx))
+    d = _axis(img, mode)
+    return float(np.arctan2(d[1] * height, d[0] * width))
 
 
-def foreshortening(world):
-    """2D (image-plane) length / 3D length of wrist -> middle knuckle. ~1 = flat to the
-    camera, ~0 = pointing straight at the camera (angle unreliable)."""
-    d = np.asarray(world[9], dtype=np.float64) - world[0]
+def foreshortening(world, mode=None):
+    """2D (image-plane) length / 3D length of the blade axis. ~1 = flat to the camera,
+    ~0 = pointing straight at the camera (angle unreliable)."""
+    d = _axis(world, mode)
     full = np.linalg.norm(d)
     return float(np.linalg.norm(d[:2]) / full) if full > 1e-9 else 0.0

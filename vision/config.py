@@ -48,6 +48,11 @@ OPEN_BELOW = 0.30         # outside GRIP: <= this is OPEN, otherwise UNCLEAR
 LOST_GRACE_S = 0.150      # hold the last state this long after the hand vanishes
 TWO_HANDS_FRAMES = 3      # second hand must be seen this many frames in a row
 
+# ---- Blade ---------------------------------------------------------------
+# "grip": real sword grip, blade across the fist (pinky side -> out past the thumb),
+#         base in the centre of the grip. "knuckle": original spec, wrist -> middle knuckle.
+BLADE_MODE = "grip"
+
 # ---- One Euro filters ----------------------------------------------------
 POS_MIN_CUTOFF = 1.0
 POS_BETA = 3.0
@@ -55,7 +60,7 @@ POS_D_CUTOFF = 1.0
 ANG_MIN_CUTOFF = 1.0
 ANG_BETA = 0.5
 ANG_D_CUTOFF = 1.0
-# Side-on hold: if the wrist->middle-knuckle line's 2D length / 3D length is
+# Side-on hold: if the blade axis's 2D length / 3D length is
 # below this, the angle is unreliable, so we hold the last good angle.
 SIDE_ON_RATIO = 0.5
 SIDE_ON_BLEND_S = 0.15    # time to blend back once the angle is reliable again
