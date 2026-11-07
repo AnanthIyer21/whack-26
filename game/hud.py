@@ -44,6 +44,75 @@ class Popup:
         return self.age < self.LIFE
 
 
+MULT_COLORS = {1: (170, 180, 205), 2: (130, 210, 255), 3: (255, 175, 70), 4: (255, 85, 50),
+               5: (120, 200, 255)}
+
+
+class StreakMeter:
+    """The multiplier badge (x1..x4) with a bar that fills towards the next one.
+
+    Level up: the badge pops and the bar refills from empty. Streak broken: the bar flashes
+    red and drains, and the badge drops back to x1.
+    """
+    BAR_W, BAR_H = 150, 10
+
+    def __init__(self, app):
+        self.app = app
+        self.prev_mult = 1
+        self.prev_streak = 0
+        self.prev_frac = 0.0
+        self.pop_t = -9.0
+        self.break_t = -9.0
+        self.break_frac = 0.0
+        self.shown = 0.0           # bar fill, eased
+
+    def draw(self, screen, now, streak, pos):
+        from .scoring import mult_progress
+        mult, frac = mult_progress(streak)
+        if mult > self.prev_mult:
+            self.pop_t, self.shown = now, 0.0
+        if streak < self.prev_streak and self.prev_streak >= 2:
+            self.break_t, self.break_frac = now, self.prev_frac
+            self.shown = 0.0
+        self.prev_mult, self.prev_streak, self.prev_frac = mult, streak, frac
+        self.shown += (frac - self.shown) * 0.25
+
+        x, y = pos
+        col = MULT_COLORS.get(mult, MULT_COLORS[5])
+        # badge
+        pop = max(0.0, 1 - (now - self.pop_t) / 0.25)
+        r = int(24 * (1 + 0.35 * pop))
+        cx, cy = x + 24, y + 6
+        if mult > 1:
+            glow = pygame.Surface((r * 4, r * 4), pygame.SRCALPHA)
+            pygame.draw.circle(glow, (*col, 45 + int(70 * pop)), (r * 2, r * 2), r * 1.3)
+            screen.blit(glow, (cx - r * 2, cy - r * 2))
+        pygame.draw.circle(screen, (20, 20, 32), (cx, cy), r)
+        pygame.draw.circle(screen, col, (cx, cy), r, 3)
+        self.app.text(screen, f"x{mult}", int(30 * (1 + 0.3 * pop)), (cx, cy + 1), col, "center")
+
+        # bar towards the next multiplier
+        bx, by = x + 58, y + 1
+        track = pygame.Rect(bx, by, self.BAR_W, self.BAR_H)
+        pygame.draw.rect(screen, (30, 30, 45), track, border_radius=5)
+        since_break = now - self.break_t
+        if since_break < 0.45:                       # broken: red flash draining away
+            u = since_break / 0.45
+            w = int(self.BAR_W * self.break_frac * (1 - u))
+            if w > 0:
+                pygame.draw.rect(screen, (255, 70, 70), (bx, by, w, self.BAR_H), border_radius=5)
+        elif mult >= 5:
+            shimmer = 0.75 + 0.25 * math.sin(now * 6)
+            pygame.draw.rect(screen, tuple(int(c * shimmer) for c in col), track, border_radius=5)
+        else:
+            w = int(self.BAR_W * self.shown)
+            if w > 0:
+                pygame.draw.rect(screen, col, (bx, by, w, self.BAR_H), border_radius=5)
+        pygame.draw.rect(screen, (90, 95, 120), track, 1, border_radius=5)
+        if streak >= 2:
+            self.app.text(screen, f"{streak} in a row", 22, (bx, by + 16), (185, 190, 210))
+
+
 class Hud:
     HEART = 46
 
@@ -54,6 +123,7 @@ class Hud:
         self.lost_at = {}          # heart index -> time it was lost (for the crack animation)
         self.popups = []
         self.shown_points = 0.0    # score counts up smoothly
+        self.meter = StreakMeter(app)
 
     def life_lost(self, index, now):
         self.lost_at[index] = now
@@ -70,7 +140,7 @@ class Hud:
     def draw(self, screen, now, score, time_left, run_len):
         app = self.app
         # hearts: lost ones shake, swell and crack for 0.5 s, then become outlines
-        for i in range(3):
+        for i in range(score.max_lives):
             x, y = 20 + i * (self.HEART + 8), 16
             alive = i < score.lives
             lost = self.lost_at.get(i)
@@ -89,11 +159,7 @@ class Hud:
 
         # score
         app.text(screen, f"{int(round(self.shown_points))}", 64, (22, 66), (255, 255, 255))
-        if score.streak >= 3:
-            hot = score.doubled
-            col = (255, 160, 60) if hot else (200, 220, 255)
-            label = f"STREAK {score.streak}" + ("  x2" if hot else "")
-            app.text(screen, label, 30, (24, 118), col)
+        self.meter.draw(screen, now, score.streak, (22, 132))
 
         # timer: red and pulsing in the last 10 s
         secs = max(0, math.ceil(time_left))

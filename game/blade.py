@@ -13,6 +13,7 @@ import pygame
 
 from . import config as C
 from .geometry import wrap_angle
+from .blade_fx import BladeFire
 from .katana import angle_to_rotozoom, make_katana
 
 
@@ -38,7 +39,7 @@ class Blade:
         self.angle = C.MOUSE_START_ANGLE
         self.draw_t0 = 0.0
         self.speed = 0.0           # latest tip speed (screen heights / s), for debug + effects
-        self.heat = 0.0            # 0..1 extra glow (streak fire), set by the game
+        self.fire = BladeFire()     # streak fire (x3 heated, x4 on fire, x5 blue inferno)
         self._hist = []            # recent fresh samples: (t, base, angle)
         self._last_t = None
         self._pending = []         # Sweeps not yet consumed by the game
@@ -158,7 +159,7 @@ class Blade:
             trail_box = pygame.Rect(min(xs) - 4, min(ys) - 4, max(xs) - min(xs) + 8, max(ys) - min(ys) + 8)
             trail_box = trail_box.clip(glow_layer.get_rect())
             bright = max(0.25, min(1.0, self.speed / (C.CUT_SPEED * 1.5)))
-            col = _mix(C.GLOW, (255, 140, 60), self.heat)
+            col = self.fire.trail_color(C.GLOW)
             for (ta, ba, pa), (tb, bb, pb) in zip(self._trail, self._trail[1:]):
                 age = (now - ta) / C.TRAIL_TIME
                 a = int(105 * (1 - age) ** 1.5 * bright)
@@ -173,6 +174,7 @@ class Blade:
             surf.blit(glow_layer, trail_box, area=trail_box)
             glow_layer.fill((0, 0, 0, 0), trail_box)
         if not self.visible:
+            self.fire.update_and_draw(surf, self.base, self.tip(), now, visible=False)  # let embers die out
             return
 
         g = self.grow(now)
@@ -184,6 +186,7 @@ class Blade:
             img.fill((0, 0, 0, 0), pygame.Rect(0, 0, img.get_width(), int(pivot_y - self.length * g)))
         rot = pygame.transform.rotozoom(img, angle_to_rotozoom(self.angle), 1.0)
         surf.blit(rot, rot.get_rect(center=(int(self.base[0]), int(self.base[1]))))
+        self.fire.update_and_draw(surf, self.base, self.tip(now), now, visible=not frozen)
 
         # glint at the tip right as the draw finishes ("shing")
         since = now - self.draw_t0 - C.DRAW_TIME

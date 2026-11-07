@@ -2,26 +2,41 @@
 
 How pygame works, in one paragraph: every frame we (1) read input events from the OS,
 (2) update the game by dt seconds, (3) draw everything onto the screen surface, then
-(4) flip() to show it. clock.tick(60) sleeps just enough to hold 60 frames per second.
+(4) flip() to show it. clock.tick_busy_loop(60) waits just enough to hold 60 frames per
+second (plain tick() oversleeps on macOS and only reaches ~45).
 """
+import queue
 import time
 
 import pygame
 
+import shared
 from . import config as C
-from .input import MouseInput, HandInput, Viewport
+from .background import CameraBackground
+from .events import Emitter
+from .input import HandInput, MouseInput, Viewport
 
 
 class App:
     def __init__(self, links, fullscreen=False, input_mode="mouse"):
         self.links = links
+        # Team audio contract: mixer settings before init, channel 0 reserved for the rival.
+        pygame.mixer.pre_init(shared.MIXER_FREQ, shared.MIXER_SIZE, shared.MIXER_CHANNELS, shared.MIXER_BUFFER)
         pygame.init()
+        try:
+            pygame.mixer.set_reserved(1)
+        except pygame.error:
+            pass                                       # no audio device: play silently
         pygame.display.set_caption("WHACK 26 - Fruit Ninja vs the Rival")
         # SCALED: we always draw at 1280x720 and pygame scales it to the window/fullscreen,
         # and maps mouse positions back to 1280x720 for us.
-        self.screen = pygame.display.set_mode((C.W, C.H), pygame.SCALED, vsync=1)
+        try:
+            self.screen = pygame.display.set_mode((C.W, C.H), pygame.SCALED, vsync=1)
+        except pygame.error:
+            self.screen = pygame.display.set_mode((C.W, C.H), pygame.SCALED)
+        self.fullscreen = False
         if fullscreen:
-            pygame.display.toggle_fullscreen()
+            self.toggle_fullscreen()
         self.clock = pygame.time.Clock()
         self.glow = pygame.Surface((C.W, C.H), pygame.SRCALPHA).convert_alpha()  # translucent effects layer
         self.fonts = {}
@@ -29,24 +44,34 @@ class App:
         self.debug = False
         self.running = True
 
-        from .events import Emitter
-        self.events = Emitter(links.events)          # game -> rival, never blocks
-        self.settings = {"seconds": links.default_seconds}
+        self.events = Emitter(links.post_event)       # game -> rival, never blocks
+        self.settings = {"seconds": links.default_seconds, "sound": True}
         self.viewport = Viewport()
-        self.inputs = {"mouse": MouseInput(links.blade_length * C.H), "hand": HandInput(links.get_hand_state, self.viewport)}
+        self.background = CameraBackground(links.get_latest_frame, self.viewport)
+        self.inputs = {"mouse": MouseInput(), "hand": HandInput(links.get_hand_state, self.viewport)}
         self.input_name = input_mode if input_mode in self.inputs else "mouse"
+        self.mouse_publishes = input_mode == "mouse"   # vision isn't running: we publish HandState
 
-        from .scenes.play import PlayScene
-        self.scene = PlayScene(self)
+        # rival -> game: newest line (for the bubble) and the final roast (for game over)
+        self.rival_line = None
+        self.rival_line_at = 0.0
+        self.final_line = None
+
+        from .scenes.title import TitleScene
+        self.scene = TitleScene(self)
 
     # ---- helpers used by scenes ---------------------------------------------------------
     @property
     def input(self):
         return self.inputs[self.input_name]
 
+    def toggle_fullscreen(self):
+        pygame.display.toggle_fullscreen()
+        self.fullscreen = not self.fullscreen
+
     def font(self, size):
         if size not in self.fonts:
-            self.fonts[size] = pygame.font.Font(None, size)
+            self.fonts[size] = pygame.font.Font(None, size)   # SysFont hangs on macOS
         return self.fonts[size]
 
     def render(self, s, size, color):
@@ -59,20 +84,28 @@ class App:
             img = self._text_cache[key] = self.font(size).render(s, True, color).convert_alpha()
         return img
 
-    def text(self, surf, s, size, pos, color=(255, 255, 255), anchor="topleft"):
+    def text(self, surf, s, size, pos, color=(255, 255, 255), anchor="topleft", shadow=False):
         img = self.render(s, size, color)
         img.set_alpha(255)
         r = img.get_rect(**{anchor: pos})
+        if shadow:
+            sh = self.render(s, size, (0, 0, 0))
+            sh.set_alpha(140)
+            surf.blit(sh, r.move(2, 3))
         surf.blit(img, r)
         return r
 
     def switch_scene(self, scene):
         self.scene = scene
 
+    def quit(self):
+        self.running = False
+
     # ---- main loop ---------------------------------------------------------------------
     def run(self):
         last = time.monotonic()
-        while self.running:
+        stop = self.links.stop_event
+        while self.running and not stop.is_set():
             now = time.monotonic()
             dt = min(now - last, C.MAX_DT)
             last = now
@@ -81,7 +114,7 @@ class App:
                 if ev.type == pygame.QUIT:
                     self.running = False
                 elif ev.type == pygame.KEYDOWN and ev.key == pygame.K_f:
-                    pygame.display.toggle_fullscreen()
+                    self.toggle_fullscreen()
                 elif ev.type == pygame.KEYDOWN and ev.key == pygame.K_d:
                     self.debug = not self.debug
                 elif ev.type == pygame.KEYDOWN and ev.key == pygame.K_TAB:
@@ -91,13 +124,34 @@ class App:
                     self.input.handle_event(ev)
                     self.scene.handle_event(ev)
 
+            self._read_rival(now)
             self.scene.update(dt, now)
             self.glow.fill((0, 0, 0, 0))
             self.scene.draw(self.screen, now)
             self._draw_corner_tags()
             pygame.display.flip()
-            self.clock.tick(C.FPS)
+            self.clock.tick_busy_loop(C.FPS)
         pygame.quit()
+
+    def poll_input(self, now):
+        """Scenes call this once per frame. In mouse mode we also publish the HandState."""
+        s = self.input.poll(now)
+        if self.mouse_publishes and self.input_name == "mouse":
+            self.links.set_hand_state(shared.HandState(
+                sword_visible=True, sword_active=bool(s.gripping),
+                blade_base=(s.base[0] / C.W, s.base[1] / C.H), blade_angle=float(s.angle),
+                hands_in_frame=int(s.hands), gesture="none", confidence=1.0, t=now))
+        return s
+
+    def _read_rival(self, now):
+        while True:
+            try:
+                line = self.links.rival_lines.get_nowait()
+            except queue.Empty:
+                break
+            self.rival_line, self.rival_line_at = line, now
+            if line.get("final"):
+                self.final_line = line
 
     def _draw_corner_tags(self):
         self.text(self.screen, self.input.name, 20, (C.W - 8, C.H - 6), (200, 200, 200), "bottomright")

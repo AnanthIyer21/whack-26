@@ -32,8 +32,9 @@ def test_cut_line_follows_blade_not_motion():
 def test_bomb_blast_clears_screen_without_misses():
     from game.link import resolve
     from game.app import App
-    app = App(resolve(start_rival_if_fake=False))
-    sc = app.scene
+    from game.scenes.play import PlayScene
+    app = App(resolve(post_event=lambda e: None))
+    sc = PlayScene(app)
     sc.objects = [Fruit(KINDS[i], (200 + 100 * i, 400), (0, 0), 0, 0) for i in range(5)]
     bomb = Bomb((640, 360), (0, 0), 0, 0)
     sc._bomb_hit(bomb, 0.0)

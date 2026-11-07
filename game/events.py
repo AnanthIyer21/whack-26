@@ -1,25 +1,24 @@
-"""Game -> rival events. Every event is a dict with "type" and "t" (time.monotonic()).
+"""Game -> rival events, built with shared's ev_* builders and sent with post_event.
 
-put_nowait only: the game never blocks on the rival. If the queue is ever full (it shouldn't
-be), the event is dropped and counted.
+post_event never blocks (put_nowait on an unbounded queue). If sending ever fails, the
+event is dropped and counted rather than crashing or stalling the game.
 """
 from collections import deque
-import queue
-import time
+
+import shared
 
 
 class Emitter:
-    def __init__(self, q, clock=time.monotonic):
-        self.q = q
-        self.clock = clock
+    def __init__(self, post_event):
+        self.post = post_event
         self.dropped = 0
         self.log = deque(maxlen=300)    # recent events, for the debug overlay and tests
 
     def emit(self, type_, **fields):
-        ev = {"type": type_, "t": self.clock(), **fields}
+        ev = getattr(shared, "ev_" + type_)(**fields)   # typos and bad fields fail loudly here
         try:
-            self.q.put_nowait(ev)
-        except queue.Full:
+            self.post(ev)
+        except Exception:
             self.dropped += 1
         self.log.append(ev)
         return ev

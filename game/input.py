@@ -61,9 +61,13 @@ class MouseInput(InputSource):
     def poll(self, now):
         x, y = pygame.mouse.get_pos()          # pygame.SCALED already maps to 1280x720
         held = pygame.mouse.get_pressed()[0]
-        base = (float(x), float(y))
         dt = 1 / 60 if self.last is None else min(max(now - self.last, 1e-3), C.MAX_DT)
         self.last = now
+        if self.last_pos is None:
+            base = (float(x), float(y))
+        else:                                  # the katana follows the cursor with a little weight
+            k = 1 - math.exp(-C.MOUSE_FOLLOW * dt)
+            base = (self.last_pos[0] + (x - self.last_pos[0]) * k, self.last_pos[1] + (y - self.last_pos[1]) * k)
         if self.last_pos is not None:
             raw_vx = (base[0] - self.last_pos[0]) / dt
             k = 1 - math.exp(-dt / C.MOUSE_VEL_SMOOTH)        # smooth out jittery mouse deltas
@@ -95,8 +99,8 @@ class HandInput(InputSource):
             angle = self._last.angle if self._last else C.MOUSE_START_ANGLE
             return HandSample(base, angle, False, 0, now, stale=True)
 
-        t = getattr(hs, "t", now)
-        stale = (now - t) > C.HAND_STALE
+        t = getattr(hs, "t", 0.0)
+        stale = t <= 0 or (now - t) > C.HAND_STALE
         bx, by = hs.blade_base
         sample = HandSample(
             base=self.viewport.norm_to_px(bx, by),
