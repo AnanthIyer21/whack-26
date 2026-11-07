@@ -5,7 +5,7 @@ import time
 
 import pygame
 
-from game import art, bridge, config
+from game import art, bridge, config, sound
 from game.effects import Particles, Popups, Shake, Splats
 from game.fruit import Spawner, split
 from game.input import HandInput, make_input
@@ -79,7 +79,7 @@ class TitleScene:
             colour = config.DARK if chosen else config.WHITE
             draw_text(surface, f["mid"], hand.upper(), colour, rect.center)
             draw_text(surface, f["small"], f"press {hand[0].upper()}", colour, (rect.centerx, rect.bottom - 25))
-        draw_text(surface, f["small"], "F fullscreen  -  D debug  -  ESC quit",
+        draw_text(surface, f["small"], "F fullscreen  -  M mute  -  D debug  -  ESC quit",
                   config.WHITE, (config.WIDTH // 2, config.HEIGHT - 60))
 
 
@@ -94,7 +94,14 @@ class CountdownScene:
             self.app.switch(TitleScene(self.app))
 
     def update(self, dt):
+        before = int(self.t / config.COUNTDOWN_STEP)
         self.t += dt
+        step = int(self.t / config.COUNTDOWN_STEP)
+        if self.t == dt or step != before:
+            if step < 3:
+                sound.play("beep")
+            elif step == 3:
+                sound.play("go")
         if self.t >= 4 * config.COUNTDOWN_STEP:
             if self.resume_to:
                 self.resume_to.resumed()
@@ -132,6 +139,7 @@ class PlayScene:
         self.exploded = False
         self.ended = False
         self.pose_armed = False             # palms-up must be released before it can pause (again)
+        self.was_fast, self.last_swoosh = False, -1.0
         app.rival.clear()
         send(app, {"type": "game_start"})
 
@@ -169,6 +177,15 @@ class PlayScene:
         sample = self.input.update(dt)
         for ev in self.sword.update(sample, time.monotonic(), dt):
             send(self.app, ev)
+        if self.sword.just_drew:
+            sound.play("draw")
+        elif self.sword.just_sheathed:
+            sound.play("sheathe")
+        fast = self.sword.ready and self.sword.speed >= config.CUT_SPEED
+        if fast and not self.was_fast and self.elapsed - self.last_swoosh > 0.15:
+            sound.play("swoosh", random.uniform(0.7, 1.0))
+            self.last_swoosh = self.elapsed
+        self.was_fast = fast
         if isinstance(self.input, HandInput):
             if not self.input.pause_pose:
                 self.pose_armed = True
@@ -208,6 +225,7 @@ class PlayScene:
                     for ev in self.rules.on_drop(f.kind, side):
                         self.on_rule_event(ev, min(max(f.x, 80), config.WIDTH - 80), config.HEIGHT - 50)
         self.fruits = [f for f in self.fruits if f.alive]
+        sound.set_fuse(any(f.is_bomb for f in self.fruits))
 
         if self.rules.over:
             self.finish("lives")
@@ -222,6 +240,7 @@ class PlayScene:
 
     def cut(self, f, cut_angle, now):
         f.alive = False
+        sound.play("slice", random.uniform(0.8, 1.0))
         self.halves += split(f, cut_angle)
         juice = art.JUICE.get(f.kind, (240, 240, 200))
         self.particles.burst(f.x, f.y, juice, n=18, bias=cut_angle)
@@ -238,14 +257,18 @@ class PlayScene:
             self.popups.add(f"+{config.GOLDEN[3]}", x, y - 30, config.GOLD, 0.9)
         elif t == "combo":
             self.popups.add(f"COMBO x{ev['n']}!", x, y, (255, 120, 60), 1.1)
+            sound.play("combo")
             self.shake.start(4 + ev["n"], 0.25)
         elif t == "streak":
             self.popups.add(f"STREAK {ev['n']}", x, y + 60, (120, 220, 255), 1.0)
+            sound.play("streak")
         elif t == "life_lost":
             self.popups.add("X", x, y, (230, 50, 50), 0.8)
+            sound.play("life_lost")
 
     def pause(self, reason):
         self.pose_armed = False
+        sound.play("pause")
         send(self.app, {"type": "pause", "reason": reason})
         self.app.switch(PauseScene(self.app, self, reason))
 
@@ -261,6 +284,7 @@ class PlayScene:
         for ev in self.rules.settle():
             send(self.app, ev)
         self.state = "bomb"
+        sound.set_fuse(False)
         self.bomb_pos = (bomb.x, bomb.y)
         bomb.alive = False
         self.sword.reset_history()
@@ -272,6 +296,7 @@ class PlayScene:
             return                                   # hit-stop: the world is frozen
         if not self.exploded:
             self.exploded = True
+            sound.play("boom")
             bx, by = self.bomb_pos
             self.shake.start(18, 0.8)
             self.particles.burst(bx, by, (255, 200, 60), n=60, speed=(300, 900), size=(4, 9), life=(0.5, 1.1), gravity=300)
@@ -297,6 +322,7 @@ class PlayScene:
         stats = {"score": self.rules.score, "best_combo": self.rules.best_combo,
                  "duration": round(self.elapsed, 1), "reason": reason}
         send(self.app, {"type": "game_over", "want_final_roast": True, **stats})
+        sound.play("game_over")
         self.app.switch(GameOverScene(self.app, stats))
 
     def shake_offset(self):

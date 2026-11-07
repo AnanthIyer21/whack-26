@@ -11,6 +11,8 @@ FIST_HOLD = 0.5   # seconds a fist must be held to start / resume / play again
 
 class App:
     def __init__(self, input_mode="mouse", fullscreen=False, debug=False):
+        from game import sound
+        sound.pre_init()
         pygame.init()
         # SCALED: we always draw at 1280x720 and pygame scales it to the window/fullscreen.
         self.screen = pygame.display.set_mode((config.WIDTH, config.HEIGHT), pygame.SCALED)
@@ -31,8 +33,9 @@ class App:
             "small": pygame.font.Font(None, 30),
             "bubble": pygame.font.Font(None, 34),
         }
-        from game import art
+        from game import art, sound
         from game.rival_view import RivalView
+        sound.init()
         self.background = art.make_background()
         self.canvas = pygame.Surface((config.WIDTH, config.HEIGHT))   # scenes draw here; shake moves it
         self.rival = RivalView(self.fonts["bubble"])
@@ -51,6 +54,8 @@ class App:
         self.scene = TitleScene(self)
 
     def switch(self, scene):
+        from game import sound
+        sound.set_fuse(False)
         self.scene = scene
         self.fist_time, self.fist_armed = 0.0, False
 
@@ -88,6 +93,9 @@ class App:
                     pygame.display.toggle_fullscreen()
                 elif event.type == pygame.KEYDOWN and event.key == pygame.K_d:
                     self.debug = not self.debug
+                elif event.type == pygame.KEYDOWN and event.key == pygame.K_m:
+                    from game import sound
+                    sound.toggle_mute()
                 elif event.type == pygame.KEYDOWN and event.key == pygame.K_h and self.fake_vision:
                     self.fake_vision.toggle_visible()
                 else:

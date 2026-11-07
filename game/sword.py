@@ -34,6 +34,8 @@ class Sword:
         self.last_pose = None     # pose shown while fading
         self.trail = []           # [(base, angle, t, speed)]
         self.clock = 0.0
+        self.just_drew = False    # True on the frame the sword starts coming out
+        self.just_sheathed = False
 
     def reset_history(self):
         """Forget the previous sample and the trail so the next move can't create a giant slash."""
@@ -49,8 +51,10 @@ class Sword:
         """Returns a list of event dicts (sword_drawn / sword_sheathed)."""
         events = []
         self.clock += dt
+        self.just_drew = self.just_sheathed = False
         if sample.active and sample.visible:
             if not self.active:
+                self.just_drew = True
                 self.reset_history()
                 self.cur = None
                 self.anim = 0.0
@@ -77,6 +81,7 @@ class Sword:
                 self.trail.append((self.cur[0], self.cur[1], self.clock, self.speed))
         else:
             if self.active:
+                self.just_sheathed = True
                 self.last_pose = self.cur
                 self.fade = 1.0 if self.cur else 0.0
                 self.reset_history()
