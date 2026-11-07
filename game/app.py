@@ -25,19 +25,12 @@ class App:
             "mid": pygame.font.Font(None, 56),
             "small": pygame.font.Font(None, 30),
         }
-        self.background = self._make_background()
+        from game import art
+        self.background = art.make_background()
+        self.canvas = pygame.Surface((config.WIDTH, config.HEIGHT))   # scenes draw here; shake moves it
 
         from game.scenes import TitleScene
         self.scene = TitleScene(self)
-
-    def _make_background(self):
-        """A vertical dark-wood gradient, drawn once."""
-        bg = pygame.Surface((config.WIDTH, config.HEIGHT))
-        for y in range(config.HEIGHT):
-            k = y / config.HEIGHT
-            c = [int(a + (b - a) * k) for a, b in zip(config.BG_TOP, config.BG_BOTTOM)]
-            pygame.draw.line(bg, c, (0, y), (config.WIDTH, y))
-        return bg
 
     def switch(self, scene):
         self.scene = scene
@@ -55,10 +48,14 @@ class App:
                 else:
                     self.scene.handle(event)
             self.scene.update(dt)
-            self.screen.blit(self.background, (0, 0))
-            self.scene.draw(self.screen)
+            self.canvas.blit(self.background, (0, 0))
+            self.scene.draw(self.canvas)
             if self.debug:
                 self._draw_debug()
+            ox, oy = self.scene.shake_offset() if hasattr(self.scene, "shake_offset") else (0, 0)
+            if ox or oy:
+                self.screen.fill((0, 0, 0))
+            self.screen.blit(self.canvas, (int(ox), int(oy)))
             pygame.display.flip()
         pygame.quit()
 
@@ -66,4 +63,4 @@ class App:
         from game import bridge
         text = f"FPS {self.clock.get_fps():4.0f}  input={self.input_mode}  src={bridge.SOURCE}  hand={self.sword_hand}"
         img = self.fonts["small"].render(text, True, config.WHITE)
-        self.screen.blit(img, (10, config.HEIGHT - 28))
+        self.canvas.blit(img, (10, config.HEIGHT - 28))

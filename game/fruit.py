@@ -29,25 +29,54 @@ class Fruit:
     def fell_off(self):
         return self.vy > 0 and self.y - self.r > config.HEIGHT
 
-    def draw(self, surface):
-        pos = (int(self.x), int(self.y))
-        if self.kind == "banana":
-            w, h = self.r * 2.2, self.r * 1.0
-            img = pygame.Surface((w, h), pygame.SRCALPHA)
-            pygame.draw.ellipse(img, self.colour, img.get_rect())
-            img = pygame.transform.rotate(img, -math.degrees(self.angle))
-            surface.blit(img, img.get_rect(center=pos))
-            return
-        pygame.draw.circle(surface, self.colour, pos, self.r)
-        # a highlight that spins with the fruit, so the spin is visible
-        hx = self.x + math.cos(self.angle) * self.r * 0.45
-        hy = self.y + math.sin(self.angle) * self.r * 0.45
-        shine = (255, 255, 255) if self.kind != "bomb" else (90, 90, 100)
-        pygame.draw.circle(surface, shine, (int(hx), int(hy)), max(3, self.r // 5))
+    def draw(self, surface, t=0.0):
+        from game import art
+        img = pygame.transform.rotate(art.fruit_sprite(self.kind, self.r), -math.degrees(self.angle))
         if self.is_bomb:
-            pygame.draw.circle(surface, (230, 40, 30), (pos[0], pos[1] - self.r), 6)  # fuse spark
-        if self.kind == "golden":
-            pygame.draw.circle(surface, (255, 255, 200), pos, self.r, 3)
+            # pulsing red danger glow behind the bomb, and a flickering fuse spark
+            glow = 0.5 + 0.5 * math.sin(t * 12)
+            pygame.draw.circle(surface, (120 + int(100 * glow), 20, 20), (int(self.x), int(self.y)), int(self.r * 1.25), 4)
+        surface.blit(img, img.get_rect(center=(int(self.x), int(self.y))))
+        if self.is_bomb:
+            fx = self.x + math.cos(self.angle - 1.2) * self.r * 1.45
+            fy = self.y + math.sin(self.angle - 1.2) * self.r * 1.45
+            for i in range(3):
+                pygame.draw.circle(surface, [(255, 240, 120), (255, 150, 30), (255, 60, 20)][i],
+                                   (int(fx + random.uniform(-3, 3)), int(fy + random.uniform(-3, 3))), 6 - i * 2)
+
+
+class Half:
+    """One cut half of a fruit, flying apart and spinning."""
+
+    def __init__(self, img, x, y, vx, vy, angle, spin):
+        self.img, self.x, self.y, self.vx, self.vy = img, x, y, vx, vy
+        self.angle, self.spin = angle, spin
+
+    def update(self, dt):
+        self.vy += config.GRAVITY * dt
+        self.x += self.vx * dt
+        self.y += self.vy * dt
+        self.angle += self.spin * dt
+
+    def gone(self):
+        return self.y > config.HEIGHT + 120
+
+    def draw(self, surface):
+        img = pygame.transform.rotate(self.img, -math.degrees(self.angle))
+        surface.blit(img, img.get_rect(center=(int(self.x), int(self.y))))
+
+
+def split(fruit, cut_angle):
+    """Two Halves whose cut line lines up with the swing direction."""
+    from game import art
+    top, bottom = art.half_sprites(fruit.kind, fruit.r)
+    nx, ny = math.sin(cut_angle), -math.cos(cut_angle)   # direction of the 'top' half
+    out = []
+    for img, sgn in ((top, 1), (bottom, -1)):
+        out.append(Half(img, fruit.x + nx * sgn * 6, fruit.y + ny * sgn * 6,
+                        fruit.vx + nx * sgn * 160, fruit.vy + ny * sgn * 160 - 60,
+                        cut_angle, fruit.spin * 0.3 + sgn * 2.0))
+    return out
 
 
 def throw(kind, radius, colour, points):

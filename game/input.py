@@ -6,7 +6,6 @@ from dataclasses import dataclass
 import pygame
 
 MOUSE_TURN_SPEED = 4.0    # rad/s for Q / E
-MOUSE_MOVE_MIN = 150.0    # px/s before the blade follows your motion
 
 
 @dataclass
@@ -20,13 +19,17 @@ class SwordSample:
 
 
 class MouseInput:
-    """Left button held = sword drawn. The blade swings broadside to your motion; Q/E tilt."""
+    """Left button held = sword drawn. The katana stands upright and leans with your swing; Q/E tilt."""
     name = "mouse"
+    LEAN = 0.9          # max lean in radians
+    LEAN_SPEED = 1400   # px/s of sideways speed for most of the lean
 
     def __init__(self):
         self.pos = pygame.mouse.get_pos()
         self.down = False
-        self.angle = -math.pi / 2   # pointing up
+        self.tilt = 0.0                 # extra angle from Q / E
+        self.angle = -math.pi / 2       # pointing up
+        self.vx = 0.0                   # smoothed sideways speed
         self.last_pos, self.last_t = self.pos, time.monotonic()
 
     def handle(self, event):
@@ -40,18 +43,16 @@ class MouseInput:
     def update(self, dt):
         now = time.monotonic()
         gap = max(1e-4, now - self.last_t)
-        vx, vy = (self.pos[0] - self.last_pos[0]) / gap, (self.pos[1] - self.last_pos[1]) / gap
-        if math.hypot(vx, vy) > MOUSE_MOVE_MIN:
-            # point the blade at right angles to the motion, picking the side nearest "up"
-            move = math.atan2(vy, vx)
-            options = [move - math.pi / 2, move + math.pi / 2]
-            target = min(options, key=lambda a: abs(_wrap(a + math.pi / 2)))
-            self.angle += _wrap(target - self.angle) * min(1.0, 12 * dt)
+        raw_vx = (self.pos[0] - self.last_pos[0]) / gap
+        self.vx += (raw_vx - self.vx) * min(1.0, 18 * dt)        # smooth out uneven mouse events
         keys = pygame.key.get_pressed()
         if keys[pygame.K_q]:
-            self.angle -= MOUSE_TURN_SPEED * dt
+            self.tilt -= MOUSE_TURN_SPEED * dt
         if keys[pygame.K_e]:
-            self.angle += MOUSE_TURN_SPEED * dt
+            self.tilt += MOUSE_TURN_SPEED * dt
+        # the tip trails behind the swing like it has weight; never flips
+        target = -math.pi / 2 - self.LEAN * math.tanh(self.vx / self.LEAN_SPEED) + self.tilt
+        self.angle += (target - self.angle) * min(1.0, 14 * dt)
         self.last_pos, self.last_t = self.pos, now
         return SwordSample(self.down, True, self.pos, self.angle, now, True)
 

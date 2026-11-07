@@ -1,14 +1,16 @@
 """The game's screens. Each scene has handle(event), update(dt) and draw(surface)."""
+import math
 import random
 import time
 
 import pygame
 
-from game import bridge, config
-from game.fruit import Spawner
+from game import art, bridge, config
+from game.effects import Particles, Popups, Shake, Splats
+from game.fruit import Spawner, split
 from game.input import make_input
 from game.rules import Rules
-from game.slicing import swept_hit
+from game.slicing import swept_hit, tip
 from game.sword import Sword
 
 
@@ -110,17 +112,21 @@ class PlayScene:
         self.spawner = Spawner()
         self.sword = Sword()
         self.input = make_input(app.input_mode)
-        self.fruits = []
-        self.popups = []                    # [text, x, y, time_left]
+        self.fruits, self.halves = [], []
+        self.particles, self.splats = Particles(), Splats()
+        self.popups = Popups(app.fonts["mid"])
+        self.shake = Shake()
         self.elapsed = 0.0                  # simulation time of this round
         self.state = "playing"              # playing -> bomb -> (game over)
         self.bomb_timer = 0.0
+        self.exploded = False
         self.ended = False
         send(app, {"type": "game_start"})
 
     # --- input ---
     def handle(self, event):
-        self.input.handle(event) if hasattr(self.input, "handle") else None
+        if hasattr(self.input, "handle"):
+            self.input.handle(event)
         if event.type == pygame.KEYDOWN and self.app.debug:
             if event.key == pygame.K_MINUS:
                 config.CUT_SPEED = max(100, config.CUT_SPEED - 100)
@@ -133,33 +139,34 @@ class PlayScene:
 
     # --- game logic ---
     def update(self, dt):
+        self.shake.update(dt)
         if self.state == "bomb":
-            self.bomb_timer += dt
-            if self.bomb_timer >= config.BOMB_FREEZE + config.BOMB_EXPLODE:
-                self.finish("bomb")
+            self.update_bomb(dt)
             return
 
         self.elapsed += dt
         now = self.elapsed
         sample = self.input.update(dt)
-        for ev in self.sword.update(sample, time.monotonic()):
+        for ev in self.sword.update(sample, time.monotonic(), dt):
             send(self.app, ev)
 
         for f in self.spawner.update(dt, self.elapsed):
             self.fruits.append(f)
         for f in self.fruits:
             f.update(dt)
+        self.update_effects(dt)
 
         sweep = self.sword.sweep()
         if sweep and self.sword.speed >= config.CUT_SPEED:
+            b0, a0, b1, a1 = sweep
+            t0, t1 = tip(b0, a0, self.sword.length), tip(b1, a1, self.sword.length)
+            cut_angle = math.atan2(t1[1] - t0[1], t1[0] - t0[0])
             for f in self.fruits:
                 if f.alive and swept_hit(*sweep, self.sword.length, (f.x, f.y), f.r):
                     if f.is_bomb:
                         self.hit_bomb(f)
                         return
-                    f.alive = False
-                    for ev in self.rules.on_cut(f.kind, f.points, now):
-                        self.on_rule_event(ev, f.x, f.y)
+                    self.cut(f, cut_angle, now)
 
         for ev in self.rules.update(now):
             self.on_rule_event(ev, config.WIDTH / 2, config.HEIGHT / 3)
@@ -170,28 +177,43 @@ class PlayScene:
                 if not f.is_bomb:
                     side = "left" if f.x < config.WIDTH / 2 else "right"
                     for ev in self.rules.on_drop(f.kind, side):
-                        self.on_rule_event(ev, f.x, config.HEIGHT - 40)
+                        self.on_rule_event(ev, min(max(f.x, 80), config.WIDTH - 80), config.HEIGHT - 50)
         self.fruits = [f for f in self.fruits if f.alive]
-
-        for p in self.popups:
-            p[3] -= dt
-            p[2] -= 40 * dt
-        self.popups = [p for p in self.popups if p[3] > 0]
 
         if self.rules.over:
             self.finish("lives")
 
+    def update_effects(self, dt):
+        for h in self.halves:
+            h.update(dt)
+        self.halves = [h for h in self.halves if not h.gone()]
+        self.particles.update(dt)
+        self.splats.update(dt)
+        self.popups.update(dt)
+
+    def cut(self, f, cut_angle, now):
+        f.alive = False
+        self.halves += split(f, cut_angle)
+        juice = art.JUICE.get(f.kind, (240, 240, 200))
+        self.particles.burst(f.x, f.y, juice, n=18, bias=cut_angle)
+        self.splats.add(f.x, f.y, juice, f.r)
+        if f.kind == "golden":
+            self.particles.burst(f.x, f.y, (255, 240, 150), n=30, speed=(200, 600), size=(2, 4), gravity=200)
+        for ev in self.rules.on_cut(f.kind, f.points, now):
+            self.on_rule_event(ev, f.x, f.y)
+
     def on_rule_event(self, ev, x, y):
         send(self.app, ev)
-        if ev["type"] == "slice":
-            pts = config.GOLDEN[3] if ev["fruit"] == "golden" else 1
-            self.popups.append([f"+{pts}", x, y, 0.6])
-        elif ev["type"] == "combo":
-            self.popups.append([f"COMBO x{ev['n']}", x, y, 1.0])
-        elif ev["type"] == "streak":
-            self.popups.append([f"STREAK {ev['n']}!", x, y, 1.0])
-        elif ev["type"] == "life_lost":
-            self.popups.append(["-1 life", x, y, 0.8])
+        t = ev["type"]
+        if t == "slice" and ev["fruit"] == "golden":
+            self.popups.add(f"+{config.GOLDEN[3]}", x, y - 30, config.GOLD, 0.9)
+        elif t == "combo":
+            self.popups.add(f"COMBO x{ev['n']}!", x, y, (255, 120, 60), 1.1)
+            self.shake.start(4 + ev["n"], 0.25)
+        elif t == "streak":
+            self.popups.add(f"STREAK {ev['n']}", x, y + 60, (120, 220, 255), 1.0)
+        elif t == "life_lost":
+            self.popups.add("X", x, y, (230, 50, 50), 0.8)
 
     def hit_bomb(self, bomb):
         """Lock the game at once: no more cuts, spawns or lost lives."""
@@ -199,8 +221,30 @@ class PlayScene:
             send(self.app, ev)
         self.state = "bomb"
         self.bomb_pos = (bomb.x, bomb.y)
+        bomb.alive = False
         self.sword.reset_history()
         send(self.app, {"type": "bomb_hit"})
+
+    def update_bomb(self, dt):
+        self.bomb_timer += dt
+        if self.bomb_timer < config.BOMB_FREEZE:
+            return                                   # hit-stop: the world is frozen
+        if not self.exploded:
+            self.exploded = True
+            bx, by = self.bomb_pos
+            self.shake.start(18, 0.8)
+            self.particles.burst(bx, by, (255, 200, 60), n=60, speed=(300, 900), size=(4, 9), life=(0.5, 1.1), gravity=300)
+            self.particles.burst(bx, by, (255, 90, 20), n=50, speed=(200, 700), size=(5, 11), life=(0.6, 1.2), gravity=200)
+            self.particles.burst(bx, by, (70, 65, 60), n=40, speed=(100, 400), size=(6, 14), life=(0.8, 1.4), gravity=-50)
+            for f in self.fruits:                     # blast everything away
+                a = math.atan2(f.y - by, f.x - bx)
+                f.vx += math.cos(a) * 900
+                f.vy += math.sin(a) * 900 - 300
+        for f in self.fruits:
+            f.update(dt)
+        self.update_effects(dt)
+        if self.bomb_timer >= config.BOMB_FREEZE + config.BOMB_EXPLODE:
+            self.finish("bomb")
 
     def finish(self, reason):
         if self.ended:
@@ -214,28 +258,53 @@ class PlayScene:
         send(self.app, {"type": "game_over", "want_final_roast": True, **stats})
         self.app.switch(GameOverScene(self.app, stats))
 
+    def shake_offset(self):
+        return self.shake.offset()
+
     # --- drawing ---
     def draw(self, surface):
+        self.splats.draw(surface)
+        for h in self.halves:
+            h.draw(surface)
         for f in self.fruits:
-            f.draw(surface)
+            f.draw(surface, self.elapsed)
+        self.particles.draw(surface)
         if self.state == "bomb":
-            k = self.bomb_timer
-            if k < config.BOMB_FREEZE:
-                surface.fill((255, 255, 255))
-            else:
-                r = int(40 + 900 * (k - config.BOMB_FREEZE) / config.BOMB_EXPLODE)
-                pygame.draw.circle(surface, (255, 140, 30), (int(self.bomb_pos[0]), int(self.bomb_pos[1])), r)
-            return
-        self.sword.draw(surface)
+            self.draw_bomb(surface)
+        else:
+            self.sword.draw(surface)
+        self.popups.draw(surface)
+        self.draw_hud(surface)
+
+    def draw_bomb(self, surface):
+        k = self.bomb_timer
+        bx, by = int(self.bomb_pos[0]), int(self.bomb_pos[1])
+        if k < config.BOMB_FREEZE:
+            flash = pygame.Surface(surface.get_size(), pygame.SRCALPHA)
+            flash.fill((255, 255, 255, int(230 * (1 - k / config.BOMB_FREEZE) ** 0.5)))
+            surface.blit(flash, (0, 0))
+            pygame.draw.circle(surface, (255, 255, 230), (bx, by), int(30 + 60 * k / config.BOMB_FREEZE))
+        else:
+            e = (k - config.BOMB_FREEZE) / config.BOMB_EXPLODE
+            r = int(60 + 1100 * e ** 0.6)
+            pygame.draw.circle(surface, (255, 200, 120), (bx, by), r, max(2, int(30 * (1 - e))))
+            if e < 0.3:
+                pygame.draw.circle(surface, (255, 240, 200), (bx, by), int(120 * (1 - e / 0.3)))
+
+    def draw_hud(self, surface):
         f = self.app.fonts
-        for text, x, y, _ in self.popups:
-            draw_text(surface, f["mid"], text, config.GOLD, (x, y))
-        surface.blit(f["mid"].render(str(self.rules.score), True, config.WHITE), (24, 18))
+        score = f["big"].render(str(self.rules.score), True, config.GOLD)
+        surface.blit(f["big"].render(str(self.rules.score), True, (0, 0, 0)), (27, 13))
+        surface.blit(score, (24, 10))
         for i in range(config.LIVES):
-            colour = (220, 50, 60) if i < self.rules.lives else (70, 50, 50)
-            pygame.draw.circle(surface, colour, (40 + i * 34, 90), 12)
+            alive = i < self.rules.lives
+            x = 40 + i * 36
+            pygame.draw.circle(surface, (0, 0, 0), (x + 2, 112), 13)
+            pygame.draw.circle(surface, (230, 50, 60) if alive else (70, 50, 50), (x, 110), 13)
+            if alive:
+                pygame.draw.circle(surface, (255, 150, 150), (x - 4, 106), 4)
         if self.rules.streak >= config.STREAK_STEP:
-            surface.blit(f["small"].render(f"streak {self.rules.streak}", True, config.GOLD), (24, 112))
+            surface.blit(f["small"].render(f"streak {self.rules.streak}", True, (120, 220, 255)), (24, 134))
         if self.app.debug:
             dbg = (f"tip {self.sword.speed:5.0f} px/s  cut>={config.CUT_SPEED:.0f} (-/=)  "
                    f"blade {self.sword.length:.0f}px ([/])  t={self.elapsed:4.1f}")
