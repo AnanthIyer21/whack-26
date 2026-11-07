@@ -32,7 +32,7 @@ from vision.thread import start_thread
 from vision.tracker import HAND_CONNECTIONS
 
 PANEL_W = 330
-BLADE_LEN_PX = 170          # debug-only; the game uses shared.BLADE_LENGTH
+import shared  # noqa: E402  (blade length matches the game: shared.BLADE_LENGTH x frame height)
 COLOURS = {GRIP: (60, 220, 60), OPEN: (60, 60, 230), UNCLEAR: (0, 200, 230), None: (160, 160, 160)}
 FONT = cv2.FONT_HERSHEY_SIMPLEX   # colours in this file are BGR (OpenCV drawing)
 
@@ -160,7 +160,8 @@ def draw_hand(img, hand, colour, thick):
 def draw_blade(img, base, angle, colour, thick):
     h, w = img.shape[:2]
     bx, by = base[0] * w, base[1] * h
-    tip = (bx + BLADE_LEN_PX * math.cos(angle), by + BLADE_LEN_PX * math.sin(angle))
+    length = shared.BLADE_LENGTH * h
+    tip = (bx + length * math.cos(angle), by + length * math.sin(angle))
     cv2.line(img, (int(bx), int(by)), (int(tip[0]), int(tip[1])), colour, thick, cv2.LINE_AA)
     cv2.circle(img, (int(bx), int(by)), thick + 3, colour, -1, cv2.LINE_AA)
     if config.BLADE_MODE == "grip" and thick > 1:   # hilt stub out of the pinky side
@@ -261,8 +262,9 @@ def main():
 
     import pygame
     pygame.init()
-    width = 640 + PANEL_W
-    screen = pygame.display.set_mode((width, 480 + TUNE_H))
+    width = config.FRAME_WIDTH + PANEL_W
+    frame_h = config.FRAME_HEIGHT
+    screen = pygame.display.set_mode((width, frame_h + TUNE_H))
     pygame.display.set_caption("vision debug  (Q quit, P print, R reset, B blade mode, arrows tune)")
     clock = pygame.time.Clock()
 
@@ -314,11 +316,11 @@ def main():
                          "R resets counters"]
                 screen.blit(to_surface(pygame, render(pkt, fps, ms_hist, lines, tl)), (0, 0))
             elif pkt is None:
-                wait = np.zeros((480, width, 3), np.uint8)
+                wait = np.zeros((frame_h, width, 3), np.uint8)
                 cv2.putText(wait, loop.error or "starting camera + MediaPipe...", (20, 240), FONT, 0.6,
                             (230, 230, 230), 1)
                 screen.blit(to_surface(pygame, wait), (0, 0))
-            screen.blit(to_surface(pygame, draw_tunables(width, selected)), (0, 480))
+            screen.blit(to_surface(pygame, draw_tunables(width, selected)), (0, frame_h))
             pygame.display.flip()
             clock.tick(60)
     finally:

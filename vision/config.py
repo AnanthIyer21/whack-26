@@ -7,8 +7,8 @@ from pathlib import Path
 
 # ---- Camera ---------------------------------------------------------------
 CAMERA_INDEX = 0          # built-in webcam; try 1 if an external cam is plugged in
-FRAME_WIDTH = 640
-FRAME_HEIGHT = 480
+FRAME_WIDTH = 960       # 16:9 like the game window: no stretching. Same horizontal view as 4:3;
+FRAME_HEIGHT = 540      # 4:3 only adds ceiling/floor. 640x360 also fine (one-line change).
 TARGET_FPS = 30
 USE_DSHOW = True          # DirectShow on Windows: opens fast and honours MJPG
 USE_MJPG = True
