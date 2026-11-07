@@ -1,19 +1,20 @@
-"""Vision debug window.
+"""Vision debug window (pygame; the team uses headless OpenCV, so no cv2.imshow).
 
 Run:  .venv\\Scripts\\python -m vision.debug  [--camera 1]
 
 Shows the mirrored camera with every hand's skeleton, the sword hand coloured
 by grip state, the raw (thin) and smoothed (thick) blade, per-finger curl bars,
-hands_in_frame, the HandState being published, fps and ms per stage.
-A second window has sliders for live tuning.
+hands_in_frame, the HandState being published, fps and ms per stage, and a
+tuning list at the bottom.
 
 Bottom strip: last 3 s, one cell per frame. green GRIP, red OPEN, yellow UNCLEAR,
 blue HELD (MediaPipe missed the hand, grace period covering it), black NO HAND,
 purple TWO HANDS.
 
-Keys:  Q quit   P print current tunables (paste them into vision/config.py)
+Keys:  Q / Esc quit   P print current tunables (paste them into vision/config.py)
        R reset the dropout / grip counters
        B switch blade mode: grip (across the fist) <-> knuckle (wrist -> knuckle)
+       Up / Down pick a tunable, Left / Right change it (hold Shift for big steps)
        C counter mode (reliability check, coming in step 6)
 """
 import argparse
@@ -24,32 +25,34 @@ from collections import deque
 import cv2
 import numpy as np
 
-from vision import config, start
-from vision.fakes import FakeShared
+from vision import config
 from vision.geometry import FINGER_NAMES
 from vision.stabiliser import GRIP, OPEN, UNCLEAR
+from vision.thread import start_thread
 from vision.tracker import HAND_CONNECTIONS
 
 PANEL_W = 330
-BLADE_LEN_PX = 170          # debug-only; the game uses shared/'s blade length
+BLADE_LEN_PX = 170          # debug-only; the game uses shared.BLADE_LENGTH
 COLOURS = {GRIP: (60, 220, 60), OPEN: (60, 60, 230), UNCLEAR: (0, 200, 230), None: (160, 160, 160)}
-FONT = cv2.FONT_HERSHEY_SIMPLEX
+FONT = cv2.FONT_HERSHEY_SIMPLEX   # colours in this file are BGR (OpenCV drawing)
 
-# (trackbar name, config attribute, scale, max slider value)
-SLIDERS = [
-    ("grip enter x100", "GRIP_ENTER", 100, 100),
-    ("grip exit x100", "GRIP_EXIT", 100, 100),
-    ("open below x100", "OPEN_BELOW", 100, 100),
-    ("finger curled x100", "FINGER_CURLED", 100, 100),
-    ("min fingers", "MIN_CURLED_FINGERS", 1, 4),
-    ("pos min_cutoff x10", "POS_MIN_CUTOFF", 10, 50),
-    ("pos beta x10", "POS_BETA", 10, 200),
-    ("ang min_cutoff x10", "ANG_MIN_CUTOFF", 10, 50),
-    ("ang beta x10", "ANG_BETA", 10, 50),
-    ("side-on ratio x100", "SIDE_ON_RATIO", 100, 100),
+# (label, config attribute, step, min, max)
+TUNABLES = [
+    ("grip enter", "GRIP_ENTER", 0.01, 0.0, 1.0),
+    ("grip exit", "GRIP_EXIT", 0.01, 0.0, 1.0),
+    ("open below", "OPEN_BELOW", 0.01, 0.0, 1.0),
+    ("finger curled", "FINGER_CURLED", 0.01, 0.0, 1.0),
+    ("min fingers", "MIN_CURLED_FINGERS", 1, 1, 4),
+    ("pos min_cutoff", "POS_MIN_CUTOFF", 0.1, 0.1, 5.0),
+    ("pos beta", "POS_BETA", 0.1, 0.0, 20.0),
+    ("ang min_cutoff", "ANG_MIN_CUTOFF", 0.1, 0.1, 5.0),
+    ("ang beta", "ANG_BETA", 0.1, 0.0, 5.0),
+    ("side-on ratio", "SIDE_ON_RATIO", 0.01, 0.0, 1.0),
+    ("grace (s)", "LOST_GRACE_S", 0.01, 0.0, 0.5),
+    ("coast damping", "COAST_DAMPING", 0.5, 0.0, 30.0),
 ]
-TUNE_WIN = "vision tuning"
-MAIN_WIN = "vision debug (Q quit, P print, C counter)"
+TUNE_ROW_H = 18
+TUNE_H = TUNE_ROW_H * ((len(TUNABLES) + 1) // 2) + 10
 
 
 TIMELINE_COLOURS = {"GRIP": (60, 220, 60), "OPEN": (60, 60, 230), "UNCLEAR": (0, 200, 230),
@@ -111,30 +114,36 @@ class DebugSink:
             return self.seq, self.packet
 
 
-def make_sliders():
-    cv2.namedWindow(TUNE_WIN, cv2.WINDOW_NORMAL)
-    cv2.resizeWindow(TUNE_WIN, 420, 40 * len(SLIDERS))
-    for name, attr, scale, vmax in SLIDERS:
-        cv2.createTrackbar(name, TUNE_WIN, int(round(getattr(config, attr) * scale)), vmax, lambda v: None)
-
-
-def apply_sliders(vt):
-    for name, attr, scale, _ in SLIDERS:
-        v = cv2.getTrackbarPos(name, TUNE_WIN)
-        if v < 0:
-            return
-        setattr(config, attr, v / scale if scale != 1 else int(v))
-    p = vt.pipeline
+def adjust_tunable(index, direction, big, loop):
+    label, attr, step, lo, hi = TUNABLES[index]
+    integer = isinstance(step, int)
+    step = step * (10 if big else 1)
+    v = min(hi, max(lo, getattr(config, attr) + direction * step))
+    setattr(config, attr, int(round(v)) if integer else round(v, 4))
+    p = loop.pipeline
     if p is not None:   # One Euro filters keep their own copies of the params
-        p.blade.pos.min_cutoff = max(config.POS_MIN_CUTOFF, 0.05)
+        p.blade.pos.min_cutoff = config.POS_MIN_CUTOFF
         p.blade.pos.beta = config.POS_BETA
-        p.blade.ang._f.min_cutoff = max(config.ANG_MIN_CUTOFF, 0.05)
+        p.blade.ang._f.min_cutoff = config.ANG_MIN_CUTOFF
         p.blade.ang._f.beta = config.ANG_BETA
+
+
+def draw_tunables(width, selected):
+    img = np.full((TUNE_H, width, 3), 25, np.uint8)
+    col_w = width // 2
+    for i, (label, attr, _, _, _) in enumerate(TUNABLES):
+        x = 10 + col_w * (i % 2)
+        y = 18 + TUNE_ROW_H * (i // 2)
+        sel = i == selected
+        colour = (0, 220, 255) if sel else (200, 200, 200)
+        cv2.putText(img, f"{'>' if sel else ' '} {label:<15} {getattr(config, attr)}", (x, y), FONT, 0.45,
+                    colour, 1, cv2.LINE_AA)
+    return img
 
 
 def print_tunables():
     print("\n# ---- paste into vision/config.py ----")
-    for _, attr, _, _ in SLIDERS:
+    for _, attr, _, _, _ in TUNABLES:
         print(f"{attr} = {getattr(config, attr)}")
 
 
@@ -240,26 +249,58 @@ def render(pkt, fps, ms_hist, extra_lines=(), timeline=None):
     return np.hstack([frame, panel])
 
 
+def to_surface(pygame, bgr):
+    rgb = cv2.cvtColor(bgr, cv2.COLOR_BGR2RGB)
+    return pygame.image.frombuffer(rgb.tobytes(), (rgb.shape[1], rgb.shape[0]), "RGB")
+
+
 def main():
     ap = argparse.ArgumentParser()
     ap.add_argument("--camera", type=int, default=None)
-    ap.add_argument("--no-sliders", action="store_true")
     args = ap.parse_args()
 
-    shared = FakeShared()
+    import pygame
+    pygame.init()
+    width = 640 + PANEL_W
+    screen = pygame.display.set_mode((width, 480 + TUNE_H))
+    pygame.display.set_caption("vision debug  (Q quit, P print, R reset, B blade mode, arrows tune)")
+    clock = pygame.time.Clock()
+
     sink = DebugSink()
     stop = threading.Event()
-    vt = start(shared.set_hand_state, shared.set_latest_frame, stop, sink, args.camera)
-    if not args.no_sliders:
-        make_sliders()
-    cv2.namedWindow(MAIN_WIN, cv2.WINDOW_AUTOSIZE)
+    thread, loop = start_thread(stop, sink, args.camera)
 
     ms_hist = {k: deque(maxlen=90) for k in
                ("frame_wait", "convert", "mediapipe", "grip", "smooth", "publish", "total")}
     stamps = deque(maxlen=30)
     last_seq = 0
+    selected = 0
+    running = True
     try:
-        while True:
+        while running:
+            for ev in pygame.event.get():
+                if ev.type == pygame.QUIT:
+                    running = False
+                elif ev.type == pygame.KEYDOWN:
+                    big = bool(ev.mod & pygame.KMOD_SHIFT)
+                    if ev.key in (pygame.K_q, pygame.K_ESCAPE):
+                        running = False
+                    elif ev.key == pygame.K_p:
+                        print_tunables()
+                    elif ev.key == pygame.K_r:
+                        sink.reset_counts()
+                    elif ev.key == pygame.K_b:
+                        config.BLADE_MODE = "knuckle" if config.BLADE_MODE == "grip" else "grip"
+                        if loop.pipeline is not None:
+                            loop.pipeline.blade.reset()
+                        print("blade mode:", config.BLADE_MODE)
+                    elif ev.key == pygame.K_UP:
+                        selected = (selected - 1) % len(TUNABLES)
+                    elif ev.key == pygame.K_DOWN:
+                        selected = (selected + 1) % len(TUNABLES)
+                    elif ev.key in (pygame.K_LEFT, pygame.K_RIGHT):
+                        adjust_tunable(selected, 1 if ev.key == pygame.K_RIGHT else -1, big, loop)
+
             seq, pkt = sink.latest()
             if pkt is not None and seq != last_seq:
                 last_seq = seq
@@ -271,32 +312,19 @@ def main():
                 lines = [f"missed frames {c['missed']}/{c['frames']}  dropouts {c['dropouts']}",
                          f"lost (>grace) {c['lost']}  grip on {c['grip_on']} off {c['grip_off']}",
                          "R resets counters"]
-                cv2.imshow(MAIN_WIN, render(pkt, fps, ms_hist, lines, tl))
+                screen.blit(to_surface(pygame, render(pkt, fps, ms_hist, lines, tl)), (0, 0))
             elif pkt is None:
-                wait = np.zeros((480, 640 + PANEL_W, 3), np.uint8)
-                cv2.putText(wait, vt.error or "starting camera + MediaPipe...", (20, 240), FONT, 0.6,
+                wait = np.zeros((480, width, 3), np.uint8)
+                cv2.putText(wait, loop.error or "starting camera + MediaPipe...", (20, 240), FONT, 0.6,
                             (230, 230, 230), 1)
-                cv2.imshow(MAIN_WIN, wait)
-            key = cv2.waitKey(5) & 0xFF
-            if not args.no_sliders:
-                apply_sliders(vt)
-            if key in (ord("q"), 27):
-                break
-            if key == ord("p"):
-                print_tunables()
-            if key == ord("r"):
-                sink.reset_counts()
-            if key == ord("b"):
-                config.BLADE_MODE = "knuckle" if config.BLADE_MODE == "grip" else "grip"
-                if vt.pipeline is not None:
-                    vt.pipeline.blade.reset()
-                print("blade mode:", config.BLADE_MODE)
-            if cv2.getWindowProperty(MAIN_WIN, cv2.WND_PROP_VISIBLE) < 1:
-                break
+                screen.blit(to_surface(pygame, wait), (0, 0))
+            screen.blit(to_surface(pygame, draw_tunables(width, selected)), (0, 480))
+            pygame.display.flip()
+            clock.tick(60)
     finally:
         stop.set()
-        vt.join(timeout=2)
-        cv2.destroyAllWindows()
+        thread.join(timeout=2)
+        pygame.quit()
         print_tunables()
         c, _ = sink.summary()
         print("\n# ---- session counters (since last R) ----")

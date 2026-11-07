@@ -20,7 +20,7 @@ MIN_DETECTION_CONF = 0.5
 MIN_PRESENCE_CONF = 0.5
 MIN_TRACKING_CONF = 0.5
 # MediaPipe's handedness label comes out the wrong way round on our mirrored
-# image (checked with tools/camera_check.py on Aaron's laptop, 2026-11-07:
+# image (checked with the camera smoke test on Aaron's laptop, 2026-11-07:
 # right hand showed as "Left" with high confidence), so we flip it once.
 FLIP_HANDEDNESS = True
 # Two detections whose wrists are closer than this (normalised units) are the

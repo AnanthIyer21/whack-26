@@ -4,7 +4,7 @@ import numpy as np
 
 from tests.synthetic import detected, fist, open_hand
 from vision import config
-from vision.fakes import HandState
+from shared import HandState
 from vision.pipeline import VisionPipeline
 
 DT = 1 / 30
@@ -85,3 +85,19 @@ def test_coasting_off_freezes_blade(monkeypatch):
     out = run(moving + [[]] * 3)
     xs = [s["blade_base"][0] for s in out]
     assert xs[8] == xs[9] == xs[10]
+
+
+def test_vision_loop_publishes_through_shared():
+    import threading
+    import shared
+    from vision.thread import VisionLoop
+    loop = VisionLoop(threading.Event())
+    loop.pipeline = VisionPipeline(640, 480, tracker=FakeTracker([[detected(fist())]] * 3))
+    bgr = np.zeros((480, 640, 3), np.uint8)
+    for i in range(3):
+        loop._process(bgr, 100.0 + i * DT, 0.0, 0.0)
+    state = shared.get_hand_state()
+    assert isinstance(state, shared.HandState)
+    assert state.sword_active and state.hands_in_frame == 1 and state.t == 100.0 + 2 * DT
+    frame, t = shared.get_latest_frame()
+    assert frame.shape == (480, 640, 3) and not frame.flags.writeable and t == state.t

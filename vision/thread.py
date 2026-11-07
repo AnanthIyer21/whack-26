@@ -1,23 +1,27 @@
-"""The vision thread: owns the camera, runs the pipeline, publishes every frame."""
+"""The vision loop: owns the camera, runs the pipeline, publishes every frame to shared/."""
 import threading
 import time
 import traceback
 
+import shared
 from vision import config
 from vision.capture import Camera, CameraError
 from vision.pipeline import VisionPipeline
 
 
-class VisionThread(threading.Thread):
-    def __init__(self, publish_state, publish_frame, stop_event, publish_debug=None, camera_index=None):
-        super().__init__(name="vision", daemon=True)
-        self.publish_state = publish_state
-        self.publish_frame = publish_frame
-        self.publish_debug = publish_debug
+class VisionLoop:
+    """Runs until stop_event is set. Publishes HandState and the frame to shared/.
+
+    on_debug (optional) gets a per-frame debug packet; only the debug window and
+    the latency tool use it.
+    """
+
+    def __init__(self, stop_event, on_debug=None, camera_index=None):
         self.stop_event = stop_event
+        self.on_debug = on_debug
         self.camera_index = config.CAMERA_INDEX if camera_index is None else camera_index
         self.pipeline = None      # exposed so the debug window can tune it live
-        self.error = None         # last fatal error message, for the debug window
+        self.error = None         # last camera error message, for the debug window
 
     def run(self):
         cam = None
@@ -43,37 +47,37 @@ class VisionThread(threading.Thread):
                     continue
                 failures = 0
                 try:
-                    rgb = Camera.to_rgb_mirrored(bgr)
-                    c1 = time.perf_counter()
-                    fields, debug = self.pipeline.process(rgb, t)
-                    p_end = time.perf_counter()
-                    rgb.flags.writeable = False   # readers must not modify it
-                    self.publish_frame(rgb)
-                    self.publish_state(**fields)
-                    done = time.perf_counter()
-                    if self.publish_debug is not None:
-                        ms = debug["ms"]
-                        ms["frame_wait"] = (w1 - w0) * 1e3
-                        ms["convert"] = (c1 - w1) * 1e3
-                        ms["publish"] = (done - p_end) * 1e3
-                        ms["total"] = (done - w1) * 1e3   # frame arrived -> HandState published
-                        debug["frame"] = rgb
-                        debug["fields"] = fields
-                        debug["t"] = t
-                        self.publish_debug(debug)
+                    self._process(bgr, t, w0, w1)
                 except Exception:
-                    traceback.print_exc()     # one bad frame must never kill vision
+                    traceback.print_exc()         # one bad frame must never kill vision
         finally:
             try:
-                self.publish_state(sword_visible=False, sword_active=False, blade_base=(0.5, 0.5),
-                                   blade_angle=-1.5707963267948966, hands_in_frame=0,
-                                   gesture="none", confidence=0.0, t=time.monotonic())
+                shared.set_hand_state(shared.HandState(t=time.monotonic()))   # no hand
             except Exception:
                 pass
             if cam is not None:
                 cam.close()
             if self.pipeline is not None:
                 self.pipeline.close()
+
+    def _process(self, bgr, t, w0, w1):
+        rgb = Camera.to_rgb_mirrored(bgr)
+        c1 = time.perf_counter()
+        fields, debug = self.pipeline.process(rgb, t)
+        p_end = time.perf_counter()
+        shared.set_latest_frame(rgb, t)               # made read-only by shared/
+        shared.set_hand_state(shared.HandState(**fields))
+        done = time.perf_counter()
+        if self.on_debug is not None:
+            ms = debug["ms"]
+            ms["frame_wait"] = (w1 - w0) * 1e3
+            ms["convert"] = (c1 - w1) * 1e3
+            ms["publish"] = (done - p_end) * 1e3
+            ms["total"] = (done - w1) * 1e3           # frame arrived -> HandState published
+            debug["frame"] = rgb
+            debug["fields"] = fields
+            debug["t"] = t
+            self.on_debug(debug)
 
     def _open_camera(self):
         while not self.stop_event.is_set():
@@ -87,3 +91,11 @@ class VisionThread(threading.Thread):
                 print("[vision]", e, "- retrying in 1 s")
                 self.stop_event.wait(1.0)
         return None
+
+
+def start_thread(stop_event, on_debug=None, camera_index=None):
+    """Run VisionLoop on a daemon thread (debug window / tools). Returns (thread, loop)."""
+    loop = VisionLoop(stop_event, on_debug, camera_index)
+    t = threading.Thread(target=loop.run, name="vision", daemon=True)
+    t.start()
+    return t, loop
