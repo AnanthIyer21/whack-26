@@ -37,19 +37,28 @@ Mostly Mac laptops. Warwick DCS GPU machines are available if we need more compu
 1. **HandState** (vision -> game), read with `get_hand_state()`: `sword_hand` ("left" or "right", set from the title screen); `sword_visible` (bool); `sword_active` (bool: the sword hand is gripping); `blade_base` (x, y, each 0 to 1: where the blade leaves the fist; x mirrored like a selfie, y from top to bottom); `blade_angle` (radians, from the wrist-to-knuckles direction, smoothed); `pause_pose` (bool: both hands open, palms up, held long enough); `gesture` (str: free-hand move, "none" until extension 1); `confidence` (float, 0 to 1); `t` (`time.monotonic()` of the frame). The blade length is a game constant in `shared/`, so the game computes the tip.
 2. **events** (game -> rival): a `queue.Queue` of dicts, each with `"type"` and `"t"`. Types: `game_start`; `sword_drawn`; `sword_sheathed`; `slice` (fruit); `miss` (fruit, side: "left" or "right"); `combo` (n); `streak` (n); `streak_broken` (n); `life_lost` (lives_left); `pause`; `resume`; `bomb_hit` (always followed by `game_over`); `game_over` (score, best_combo, duration, reason). Extension: `gesture` (name), `special_move` (name, fruits_hit), `face` (expression).
 3. **rival_lines** (rival -> game): a `queue.Queue` of dicts `{"text": str, "mood": "smug" | "rattled" | "defensive" | "gloating", "duration": seconds}` for the speech bubble and avatar.
+4. **set_sword_hand("left" | "right")** (game -> vision): the title screen calls this so vision knows which hand to follow.
+5. **get_latest_frame()** (vision -> anyone): the latest camera frame, read-only, for the face model and the webcam preview. Only vision ever opens the camera.
 
 ### Repo layout
 
-`main.py` (starts the threads), `shared/` (HandState, event schema, constants), `vision/`, `game/`, `agent/`, `tools/` (recorder, training, evaluation), `data/` (raw recordings, gitignored), `models/` (small trained weights), `prompts/`. API keys live only in `.env` (gitignored): `ANTHROPIC_API_KEY`, `ELEVENLABS_API_KEY`, `ELEVENLABS_VOICE_ID`.
+`main.py` (starts the threads), `shared/` (HandState, event schema, constants), `vision/`, `game/`, `agent/`, `tools/` (recorder, training, evaluation), `data/` (landmark recordings, committed to git because they're tiny; never commit video), `models/` (small trained weights), `prompts/`. API keys live only in `.env` (gitignored): `ANTHROPIC_API_KEY`, `ELEVENLABS_API_KEY`, `ELEVENLABS_VOICE_ID`.
 
 ### Git workflow
 
+**Before anyone builds on the interfaces:** Ananth writes `shared/` (HandState, the two queues, `set_sword_hand()`, `get_latest_frame()`, constants such as the blade length), a `main.py` skeleton that starts the three threads, `.gitignore`, `requirements.txt` and `.env.example`, and merges them into `staging`. Everyone pulls `staging` into their branch as soon as it lands.
+
 Work only on your own branch (`aaron`, `pricysquirrl`, `rbadiadka7`, `ananth`). Commit small and often. Open pull requests into `staging`; we test together on `staging`; `staging` is merged into `main` only when the whole team is happy. Never push to `main`. Pull `staging` into your branch regularly to avoid conflicts.
+
+### Demo laptop and keys
+
+Pick one demo laptop now (the one with the best webcam). It holds the only `.env` with the Claude and ElevenLabs keys; share keys by private message, never in the group chat or in git.
 
 ### Team checkpoints (UK time)
 
 | By | Done |
 |---|---|
+| Sat 14:30 | Ananth's `shared/` and `main.py` skeleton merged into `staging`; everyone pulls it |
 | Sat 15:30 | Interfaces committed in `shared/`; game playable with the mouse as the sword; rival speaks cached lines from fake events; recorder works |
 | Sat 18:00 | Grip, open, palm up and other recorded by all four; first model trained; blade from hand tilt working in the vision debug view |
 | Sat 22:00 | Everything joined up on `staging` and playable with the sword; pause pose working; model above 90% on held-out data |
@@ -64,7 +73,7 @@ Work only on your own branch (`aaron`, `pricysquirrl`, `rbadiadka7`, `ananth`). 
 | Aaron | Vision lead | Webcam, MediaPipe tracking of both hands, locking onto the sword hand, the sword (blade position and angle from hand tilt), the hand-state model (grip, open, palm up, other), the pause pose, evaluation (accuracy, confusion matrix, latency), `HandState`. Extension: free-hand gesture moves. Stretch: our own hand detector |
 | Pricysquirrl | Game | pygame-ce Fruit Ninja: title screen with sword-hand choice, fruit, bombs that end the game, the drawn sword and its trail, swept-blade slicing, juice, combos, score, lives, pause screen, HUD, the rival's avatar and speech bubble, events. Extension: move effects |
 | RBadiadka7 | Data, face model, demo | Recorder tool, recording sessions with all four of us, data checks. Stretch: face-reaction model. Devpost, demo video, pitch and rehearsals |
-| Ananth | Rival agent | Timing engine (when to speak), personality, cached ElevenLabs line bank, Claude for big moments, audio, subtitles |
+| Ananth | Rival agent, `shared/` and integration | `shared/`, the `main.py` skeleton and wiring the threads together, timing engine (when to speak), personality, cached ElevenLabs line bank, Claude for big moments, audio, subtitles |
 
 ## Pitch proof (what shows it isn't an AI wrapper)
 
