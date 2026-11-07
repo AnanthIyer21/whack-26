@@ -57,6 +57,8 @@ _FAKE_LINES = {
     "streak": ("Okay... lucky streak. It won't last.", "rattled"),
     "combo": ("A combo? Who's helping you?", "rattled"),
     "miss": ("Missed one. Shocking.", "smug"),
+    "pause": ("Taking a breather? Coward.", "smug"),
+    "resume": ("Back for more humiliation?", "defensive"),
 }
 
 
@@ -76,3 +78,41 @@ def start_fake_rival(events_q, lines_q):
                 lines_q.put({"text": text, "mood": mood, "duration": 2.5})
 
     threading.Thread(target=loop, name="fake-rival", daemon=True).start()
+
+
+class FakeVision:
+    """Pretend vision for testing HandInput without a camera, steered from the game window.
+
+    The game feeds it the mouse and keys every frame; a thread publishes HandState at
+    ~30 fps with a little jitter, like a real webcam pipeline would.
+    Mouse = fist position, left button = fist closed, H = hide/show hand, O (hold) = palms up.
+    """
+
+    def __init__(self, width, height):
+        self.W, self.H = width, height
+        self.pos, self.down, self.visible, self.pose = (width / 2, height / 2), False, True, False
+        self.angle, self.vx, self.last = -1.5708, 0.0, None
+        threading.Thread(target=self._loop, name="fake-vision", daemon=True).start()
+
+    def feed(self, pos, down, pose):
+        self.pos, self.down, self.pose = pos, down, pose
+
+    def toggle_visible(self):
+        self.visible = not self.visible
+        print(f"[fake vision] hand {'visible' if self.visible else 'HIDDEN'}")
+
+    def _loop(self):
+        import math
+        import random
+        while True:
+            time.sleep(1 / 30)
+            x, y = self.pos
+            if self.last:
+                self.vx += ((x - self.last[0]) * 30 - self.vx) * 0.5
+            self.last = (x, y)
+            self.angle = -math.pi / 2 - 0.9 * math.tanh(self.vx / 1400)
+            jx, jy = random.uniform(-2, 2), random.uniform(-2, 2)
+            set_hand_state(sword_visible=self.visible, sword_active=self.visible and self.down and not self.pose,
+                           blade_base=((x + jx) / self.W, (y + jy) / self.H),
+                           blade_angle=self.angle + random.uniform(-0.02, 0.02),
+                           pause_pose=self.visible and self.pose)

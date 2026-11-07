@@ -8,7 +8,7 @@ import pygame
 from game import art, bridge, config
 from game.effects import Particles, Popups, Shake, Splats
 from game.fruit import Spawner, split
-from game.input import make_input
+from game.input import HandInput, make_input
 from game.rules import Rules
 from game.slicing import swept_hit, tip
 from game.sword import Sword
@@ -62,10 +62,14 @@ class TitleScene:
                     self.choose(hand)
 
     def update(self, dt):
-        pass
+        if self.app.fist_ready():
+            self.app.switch(CountdownScene(self.app))
 
     def draw(self, surface):
         f = self.app.fonts
+        start = "SPACE or hold a fist to start" if self.app.input_mode == "hand" else "SPACE to start"
+        draw_text(surface, f["small"], f"{start}   (input: {self.app.input_mode.upper()})", config.GOLD,
+                  (config.WIDTH // 2, config.HEIGHT - 100))
         draw_text(surface, f["big"], "FRUIT NINJA", config.GOLD, (config.WIDTH // 2, 130))
         draw_text(surface, f["small"], "vs the smug AI rival", config.WHITE, (config.WIDTH // 2, 195))
         draw_text(surface, f["mid"], "Pick your sword hand", config.WHITE, (config.WIDTH // 2, 290))
@@ -75,7 +79,7 @@ class TitleScene:
             colour = config.DARK if chosen else config.WHITE
             draw_text(surface, f["mid"], hand.upper(), colour, rect.center)
             draw_text(surface, f["small"], f"press {hand[0].upper()}", colour, (rect.centerx, rect.bottom - 25))
-        draw_text(surface, f["small"], "SPACE to start  -  F fullscreen  -  D debug  -  ESC quit",
+        draw_text(surface, f["small"], "F fullscreen  -  D debug  -  ESC quit",
                   config.WHITE, (config.WIDTH // 2, config.HEIGHT - 60))
 
 
@@ -86,18 +90,24 @@ class CountdownScene:
         self.app, self.resume_to, self.t = app, resume_to, 0.0
 
     def handle(self, event):
-        if event.type == pygame.KEYDOWN and event.key == pygame.K_ESCAPE:
+        if event.type == pygame.KEYDOWN and event.key == pygame.K_ESCAPE and not self.resume_to:
             self.app.switch(TitleScene(self.app))
 
     def update(self, dt):
         self.t += dt
         if self.t >= 4 * config.COUNTDOWN_STEP:
             if self.resume_to:
+                self.resume_to.resumed()
                 self.app.switch(self.resume_to)
             else:
                 self.app.switch(PlayScene(self.app))
 
     def draw(self, surface):
+        if self.resume_to:
+            self.resume_to.draw(surface)
+            dim = pygame.Surface(surface.get_size(), pygame.SRCALPHA)
+            dim.fill((0, 0, 0, 110))
+            surface.blit(dim, (0, 0))
         step = int(self.t / config.COUNTDOWN_STEP)
         text = ["3", "2", "1", "SLICE!"][min(step, 3)]
         draw_text(surface, self.app.fonts["big"], text, config.GOLD, (config.WIDTH // 2, config.HEIGHT // 2))
@@ -121,12 +131,22 @@ class PlayScene:
         self.bomb_timer = 0.0
         self.exploded = False
         self.ended = False
+        self.pose_armed = False             # palms-up must be released before it can pause (again)
+        app.rival.clear()
         send(app, {"type": "game_start"})
 
     # --- input ---
     def handle(self, event):
         if hasattr(self.input, "handle"):
             self.input.handle(event)
+        if event.type == pygame.KEYDOWN and self.state == "playing":
+            if event.key in (pygame.K_p, pygame.K_ESCAPE):
+                self.pause("key")
+                return
+            if event.key == pygame.K_TAB:
+                self.app.set_input_mode("hand" if self.app.input_mode == "mouse" else "mouse")
+                self.input = make_input(self.app.input_mode)
+                self.sword.reset_history()
         if event.type == pygame.KEYDOWN and self.app.debug:
             if event.key == pygame.K_MINUS:
                 config.CUT_SPEED = max(100, config.CUT_SPEED - 100)
@@ -149,6 +169,15 @@ class PlayScene:
         sample = self.input.update(dt)
         for ev in self.sword.update(sample, time.monotonic(), dt):
             send(self.app, ev)
+        if isinstance(self.input, HandInput):
+            if not self.input.pause_pose:
+                self.pose_armed = True
+            elif self.pose_armed:
+                self.pause("pose")
+                return
+            if self.input.lost_for >= 1.0:
+                self.pause("hand_lost")
+                return
 
         for f in self.spawner.update(dt, self.elapsed):
             self.fruits.append(f)
@@ -214,6 +243,18 @@ class PlayScene:
             self.popups.add(f"STREAK {ev['n']}", x, y + 60, (120, 220, 255), 1.0)
         elif t == "life_lost":
             self.popups.add("X", x, y, (230, 50, 50), 0.8)
+
+    def pause(self, reason):
+        self.pose_armed = False
+        send(self.app, {"type": "pause", "reason": reason})
+        self.app.switch(PauseScene(self.app, self, reason))
+
+    def resumed(self):
+        """Called when the resume countdown ends: forget old blade positions."""
+        self.sword.reset_history()
+        self.sword.active = False
+        self.sword.cur = None
+        self.input = make_input(self.app.input_mode)
 
     def hit_bomb(self, bomb):
         """Lock the game at once: no more cuts, spawns or lost lives."""
@@ -310,7 +351,56 @@ class PlayScene:
                    f"blade {self.sword.length:.0f}px ([/])  t={self.elapsed:4.1f}")
             surface.blit(f["small"].render(dbg, True, config.WHITE), (10, config.HEIGHT - 56))
             for i, line in enumerate(self.app.last_events):
-                surface.blit(f["small"].render(line[:80], True, config.GREY), (760, 18 + i * 24))
+                surface.blit(f["small"].render(line[:70], True, config.GREY), (24, 170 + i * 24))
+
+
+class PauseScene:
+    """Frozen, dimmed, blurred round. Fist held 0.5 s (or P / Space) resumes with a countdown; Q quits."""
+
+    def __init__(self, app, play, reason):
+        self.app, self.play, self.reason, self.t = app, play, reason, 0.0
+        snap = app.background.copy()
+        play.draw(snap)
+        small = pygame.transform.smoothscale(snap, (config.WIDTH // 8, config.HEIGHT // 8))
+        self.snap = pygame.transform.smoothscale(small, (config.WIDTH, config.HEIGHT))
+        dim = pygame.Surface((config.WIDTH, config.HEIGHT), pygame.SRCALPHA)
+        dim.fill((0, 0, 0, 120))
+        self.snap.blit(dim, (0, 0))
+
+    def resume(self):
+        send(self.app, {"type": "resume"})
+        self.app.switch(CountdownScene(self.app, resume_to=self.play))
+
+    def handle(self, event):
+        if event.type == pygame.KEYDOWN:
+            if event.key in (pygame.K_p, pygame.K_SPACE, pygame.K_RETURN):
+                self.resume()
+            elif event.key == pygame.K_q:
+                self.play.finish("quit")
+                self.app.switch(TitleScene(self.app))
+
+    def update(self, dt):
+        self.t += dt
+        if self.app.fist_ready():
+            self.resume()
+
+    def draw(self, surface):
+        surface.blit(self.snap, (0, 0))
+        f, cx, cy = self.app.fonts, config.WIDTH // 2, config.HEIGHT // 2
+        draw_text(surface, f["big"], "PAUSED", config.WHITE, (cx, cy - 90))
+        why = {"hand_lost": "Can't see your hand!", "pose": "Palms up - nice and relaxed.", "key": ""}[self.reason]
+        if why:
+            draw_text(surface, f["small"], why, (255, 190, 120), (cx, cy - 25))
+        if self.app.input_mode == "hand":
+            draw_text(surface, f["mid"], f"Make a fist with your {self.app.sword_hand} hand to resume", config.GOLD, (cx, cy + 40))
+            k = min(1.0, self.app.fist_time / 0.5) if self.app.fist_armed else 0.0
+            pygame.draw.circle(surface, (80, 70, 60), (cx, cy + 120), 34, 6)
+            if k > 0:
+                pygame.draw.arc(surface, config.GOLD, (cx - 34, cy + 86, 68, 68), math.pi / 2, math.pi / 2 + k * math.tau, 6)
+            draw_text(surface, f["small"], "L" if self.app.sword_hand == "left" else "R", config.WHITE, (cx, cy + 120))
+        else:
+            draw_text(surface, f["mid"], "P or SPACE to resume", config.GOLD, (cx, cy + 40))
+        draw_text(surface, f["small"], "Q quit to title", config.WHITE, (cx, config.HEIGHT - 60))
 
 
 CANNED_ROASTS = [
@@ -342,19 +432,24 @@ class GameOverScene:
         elif event.type == pygame.MOUSEBUTTONDOWN and event.button == 1:
             self.app.switch(CountdownScene(self.app))
 
+    def offer(self, line):
+        """The app offers every rival line here first. Only a tagged final roast for this round is taken;
+        a late mid-game taunt never becomes the roast (it just shows in the bubble)."""
+        if self.roast is not None or line.get("kind") != "final_roast":
+            return False
+        if line.get("round_id", self.app.round_id) != self.app.round_id:
+            return False
+        self.roast = line.get("text", "")
+        self.app.rival.set_mood(line.get("mood", "gloating"), float(line.get("duration", 4.0)))
+        return True
+
     def update(self, dt):
         self.t += dt
-        if self.roast is None:
-            for line in bridge.drain_rival_lines():
-                # only a line tagged as the final roast counts; a late mid-game taunt never does
-                if line.get("kind") != "final_roast":
-                    continue
-                if line.get("round_id", self.app.round_id) != self.app.round_id:
-                    continue
-                self.roast = line.get("text", "")
-                break
-            if self.roast is None and self.t >= config.FINAL_ROAST_WAIT:
-                self.roast = self.canned()
+        if self.roast is None and self.t >= config.FINAL_ROAST_WAIT:
+            self.roast = self.canned()
+            self.app.rival.set_mood("gloating", 4.0)
+        if self.t >= 0.8 and self.app.fist_ready():
+            self.app.switch(CountdownScene(self.app))
 
     def canned(self):
         if self.stats["reason"] == "bomb":
@@ -376,6 +471,17 @@ class GameOverScene:
             dots = "." * (1 + int(self.t * 3) % 3)
             draw_text(surface, f["mid"], f"rival is thinking{dots}", config.GREY, (cx, 430))
         else:
-            draw_text(surface, f["mid"], f"\"{self.roast}\"", config.GOLD, (cx, 430))
-        draw_text(surface, f["small"], "SPACE / click to play again   -   T title   -   ESC quit",
+            words, lines, cur = f"\"{self.roast}\"".split(), [], ""
+            for w in words:
+                test = (cur + " " + w).strip()
+                if f["mid"].size(test)[0] > 1100 and cur:
+                    lines.append(cur)
+                    cur = w
+                else:
+                    cur = test
+            lines.append(cur)
+            for i, line in enumerate(lines[:4]):
+                draw_text(surface, f["mid"], line, config.GOLD, (cx, 410 + i * 52))
+        draw_text(surface, f["small"], ("SPACE / click / fist to play again   -   T title   -   ESC quit" if self.app.input_mode == "hand"
+                   else "SPACE / click to play again   -   T title   -   ESC quit"),
                   config.WHITE, (cx, config.HEIGHT - 60))

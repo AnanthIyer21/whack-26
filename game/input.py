@@ -61,7 +61,49 @@ def _wrap(a):
     return (a + math.pi) % (2 * math.pi) - math.pi
 
 
+class HandInput:
+    """Reads get_hand_state() from vision. Never blocks; copes with slow or missing frames."""
+    name = "hand"
+    STALE = 0.25          # a HandState older than this counts as "hand not seen"
+
+    def __init__(self):
+        self.last_t = None
+        self.lost_since = None
+        self.pause_pose = False
+        self.state = None
+
+    def update(self, dt):
+        from game import bridge, config
+        now = time.monotonic()
+        hs = bridge.get_hand_state()
+        self.state = hs
+        if hs is None:
+            visible, active, base, angle, t, new = False, False, (0, 0), -math.pi / 2, now, False
+            self.pause_pose = False
+        else:
+            fresh = now - hs.t < self.STALE
+            visible = bool(hs.sword_visible) and fresh
+            active = visible and bool(hs.sword_active)
+            bx, by = hs.blade_base
+            base = (bx * config.WIDTH, by * config.HEIGHT)
+            angle, t = hs.blade_angle, hs.t
+            new = hs.t != self.last_t
+            self.last_t = hs.t
+            self.pause_pose = bool(hs.pause_pose) and fresh
+        if visible:
+            self.lost_since = None
+        elif self.lost_since is None:
+            self.lost_since = now
+        return SwordSample(active, visible, base, angle, t, new)
+
+    @property
+    def lost_for(self):
+        return 0.0 if self.lost_since is None else time.monotonic() - self.lost_since
+
+    @property
+    def age(self):
+        return None if self.state is None else time.monotonic() - self.state.t
+
+
 def make_input(mode):
-    if mode == "hand":
-        print("[input] hand input arrives in step 3 - using the mouse for now")
-    return MouseInput()
+    return HandInput() if mode == "hand" else MouseInput()

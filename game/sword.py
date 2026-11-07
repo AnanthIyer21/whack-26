@@ -13,7 +13,7 @@ from game.slicing import tip
 DRAW_TIME = 0.12
 FADE_TIME = 0.15
 TRAIL_TIME = 0.14
-TRAIL_FROM = 0.45     # trail covers the blade from 45% of its length to the tip
+TRAIL_FROM = 0.65     # trail covers the outer third of the blade
 
 
 def _ease_out(k):
@@ -104,74 +104,99 @@ class Sword:
     def draw(self, surface):
         self._draw_trail(surface)
         if self.active and self.cur:
-            _draw_katana(surface, self.cur[0], self.cur[1], self.length, _ease_out(self.anim), 255,
-                         glint=self.anim < 1.0)
+            k = _ease_out(self.anim)
+            _blit_katana(surface, self.cur[0], self.cur[1], self.length, int(255 * min(1.0, self.anim * 1.6)),
+                         0.88 + 0.12 * k)
+            if self.anim < 1.0:   # soft light sweeping from guard to tip while drawing
+                s = self.length * k
+                g = tip(self.cur[0], self.cur[1], s)
+                glow = _glow()
+                glow.set_alpha(int(255 * (1 - self.anim * 0.6)))
+                surface.blit(glow, glow.get_rect(center=(int(g[0]), int(g[1]))))
         elif self.fade > 0 and self.last_pose:
             base, angle, _ = self.last_pose
-            _draw_katana(surface, base, angle, self.length, 1.0, int(255 * self.fade))
+            _blit_katana(surface, base, angle, self.length, int(255 * self.fade), 1.0)
 
     def _draw_trail(self, surface):
         if len(self.trail) < 2:
             return
-        layer = pygame.Surface(surface.get_size(), pygame.SRCALPHA)
         L = self.length
+        quads = []
         for (b0, a0, t0, _), (b1, a1, t1, s1) in zip(self.trail, self.trail[1:]):
-            if s1 < config.CUT_SPEED * 0.5:
-                continue
             k = 1 - (self.clock - t1) / TRAIL_TIME
-            if k <= 0:
+            if s1 < config.CUT_SPEED * 0.5 or k <= 0:
                 continue
-            quad = [tip(b0, a0, L * TRAIL_FROM), tip(b0, a0, L), tip(b1, a1, L), tip(b1, a1, L * TRAIL_FROM)]
-            pygame.draw.polygon(layer, (150, 215, 255, int(55 * k * k)), quad)
-            core = [tip(b0, a0, L * 0.88), tip(b0, a0, L), tip(b1, a1, L), tip(b1, a1, L * 0.88)]
-            pygame.draw.polygon(layer, (240, 252, 255, int(230 * k)), core)
-        surface.blit(layer, (0, 0))
+            quads.append((k, [tip(b0, a0, L * TRAIL_FROM), tip(b0, a0, L), tip(b1, a1, L), tip(b1, a1, L * TRAIL_FROM)],
+                          [tip(b0, a0, L * 0.92), tip(b0, a0, L), tip(b1, a1, L), tip(b1, a1, L * 0.92)]))
+        if not quads:
+            return
+        xs = [p[0] for _, q, _ in quads for p in q]
+        ys = [p[1] for _, q, _ in quads for p in q]
+        x0, y0 = int(min(xs)) - 2, int(min(ys)) - 2
+        layer = pygame.Surface((int(max(xs)) - x0 + 4, int(max(ys)) - y0 + 4), pygame.SRCALPHA)
+        for k, quad, core in quads:   # only as big as the trail itself: much cheaper than full screen
+            pygame.draw.polygon(layer, (170, 225, 255, int(70 * k * k)), [(x - x0, y - y0) for x, y in quad])
+            pygame.draw.polygon(layer, (240, 252, 255, int(230 * k)), [(x - x0, y - y0) for x, y in core])
+        surface.blit(layer, (x0, y0))
 
 
-def _draw_katana(surface, base, angle, L, extend, alpha, glint=False):
-    """Katana with the guard at `base`, blade along `angle`, hilt behind the fist."""
-    ca, sa = math.cos(angle), math.sin(angle)
-    pad = L * 0.45
-    size = int(2 * (L + pad))
-    layer = pygame.Surface((size, size), pygame.SRCALPHA)
-    ox, oy = size / 2, size / 2
+_katana_cache = {}
+_glow_cache = []
 
-    def P(s, y):  # blade-local (along, across) -> layer coords
-        return (ox + s * ca - y * sa, oy + s * sa + y * ca)
 
-    bl = L * extend
-    curve = L * 0.05
-    back, edge = [], []
-    for i in range(13):
-        s = bl * i / 12
-        bend = -curve * (s / L) ** 2
-        w = 5.5 - 1.5 * (s / L)
-        back.append(P(s, bend - w))
-        if s <= bl * 0.9:
-            edge.append(P(s, bend + w))
-    tip_pt = P(bl, -curve * (bl / L) ** 2 - 4)
-    blade = back + [tip_pt] + edge[::-1]
-    if bl > 4:
-        pygame.draw.polygon(layer, (196, 204, 218), blade)
-        pygame.draw.aalines(layer, (110, 116, 132), True, blade)
-        pygame.draw.aalines(layer, (250, 252, 255), False, edge + [tip_pt])           # bright cutting edge
-        pygame.draw.aalines(layer, (150, 158, 175), False, [P(s, -curve * (s / L) ** 2 - 1)
-                                                            for s in (bl * k / 8 for k in range(9))])
-    # habaki (gold collar), tsuba (guard), hilt with diamond wrap, end cap
-    pygame.draw.polygon(layer, (210, 170, 60), [P(0, -7), P(10, -7), P(10, 7), P(0, 7)])
-    pygame.draw.polygon(layer, (60, 45, 25), [P(-6, -17), P(0, -17), P(0, 17), P(-6, 17)])
-    pygame.draw.polygon(layer, (190, 150, 60), [P(-6, -17), P(0, -17), P(0, 17), P(-6, 17)], 2)
-    hl = L * 0.3
-    pygame.draw.polygon(layer, (30, 25, 35), [P(-6, -7), P(-6 - hl, -6), P(-6 - hl, 6), P(-6, 7)])
-    for i in range(6):
-        s0 = -10 - i * hl / 6
-        pygame.draw.polygon(layer, (210, 200, 190), [P(s0, 0), P(s0 - hl / 12, -5), P(s0 - hl / 6, 0), P(s0 - hl / 12, 5)], 1)
-    pygame.draw.circle(layer, (190, 150, 60), P(-8 - hl, 0), 6)
-    if glint and bl > 4:
-        g = P(bl * 0.95, 0)
-        pygame.draw.circle(layer, (255, 255, 255), g, 7)
-        pygame.draw.line(layer, (255, 255, 255), (g[0] - 14, g[1]), (g[0] + 14, g[1]), 2)
-        pygame.draw.line(layer, (255, 255, 255), (g[0], g[1] - 14), (g[0], g[1] + 14), 2)
+def _glow():
+    if not _glow_cache:
+        g = pygame.Surface((48, 48), pygame.SRCALPHA)
+        for r in range(24, 0, -1):
+            pygame.draw.circle(g, (255, 255, 255, int(200 * (1 - r / 24) ** 1.5)), (24, 24), r)
+        _glow_cache.append(g)
+    return _glow_cache[0]
+
+
+def katana_sprite(L):
+    """The katana drawn once at 2x and smooth-scaled, guard at the centre, blade pointing right."""
+    L = int(L)
+    if L not in _katana_cache:
+        SS = 2
+        hl = L * 0.3
+        half_w = L + 12
+        surf = pygame.Surface((int(2 * half_w * SS), 48 * SS), pygame.SRCALPHA)
+        ox, oy = half_w * SS, 24 * SS
+
+        def P(s, y):
+            return (ox + s * SS, oy + y * SS)
+
+        curve = L * 0.05
+        back, edge = [], []
+        for i in range(25):
+            s = L * i / 24
+            bend = -curve * (s / L) ** 2
+            w = 5.5 - 1.5 * (s / L)
+            back.append(P(s, bend - w))
+            if s <= L * 0.9:
+                edge.append(P(s, bend + w))
+        tip_pt = P(L, -curve - 4)
+        pygame.draw.polygon(surf, (110, 116, 132), back + [tip_pt] + edge[::-1])
+        inner_back = [P(L * i / 24, -curve * (i / 24) ** 2 - 4) for i in range(23)]
+        inner_edge = [P(s, -curve * (s / L) ** 2 + 4) for s in (L * 0.9 * i / 20 for i in range(21))]
+        pygame.draw.polygon(surf, (200, 208, 222), inner_back + [P(L - 3, -curve - 3)] + inner_edge[::-1])
+        pygame.draw.lines(surf, (250, 252, 255), False, inner_edge + [tip_pt], 2 * SS)        # bright edge
+        pygame.draw.lines(surf, (160, 168, 185), False, [P(L * i / 24, -curve * (i / 24) ** 2 - 1) for i in range(22)], SS)
+        pygame.draw.rect(surf, (215, 175, 65), (*P(0, -7), 10 * SS, 14 * SS))                  # habaki
+        pygame.draw.ellipse(surf, (55, 40, 22), (*P(-6, -18), 7 * SS, 36 * SS))                  # tsuba
+        pygame.draw.ellipse(surf, (195, 155, 65), (*P(-6, -18), 7 * SS, 36 * SS), SS * 2)
+        pygame.draw.rect(surf, (30, 25, 35), (*P(-6 - hl, -6), hl * SS, 12 * SS), border_radius=4 * SS)
+        for i in range(6):
+            s0 = -9 - i * hl / 6.4
+            pygame.draw.polygon(surf, (215, 205, 195), [P(s0, 0), P(s0 - hl / 13, -5), P(s0 - hl / 6.5, 0), P(s0 - hl / 13, 5)], SS)
+        pygame.draw.circle(surf, (195, 155, 65), P(-8 - hl, 0), 6 * SS)
+        _katana_cache[L] = pygame.transform.smoothscale(surf, (surf.get_width() // SS, surf.get_height() // SS))
+    return _katana_cache[L]
+
+
+def _blit_katana(surface, base, angle, L, alpha, scale):
+    """Smoothly rotate the cached sprite around the guard and draw it at `base`."""
+    img = pygame.transform.rotozoom(katana_sprite(L), -math.degrees(angle), scale)
     if alpha < 255:
-        layer.set_alpha(alpha)
-    surface.blit(layer, (base[0] - ox, base[1] - oy))
+        img.set_alpha(max(0, alpha))
+    surface.blit(img, img.get_rect(center=(int(base[0]), int(base[1]))))
