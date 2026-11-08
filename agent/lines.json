@@ -34,34 +34,63 @@
     "Your {side} side appears to be decorative.",
     "Another one escapes on the {side}. They're forming a union.",
     "Was that a swing or a wave?",
-    "I've seen screensavers with better reflexes."
+    "I've seen screensavers with better reflexes.",
+    "You might need to get your eyes tested at SpecSavers, mate.",
+    "Should've gone to SpecSavers. Genuinely.",
+    "That fruit walked past you like it owed you money.",
+    "Missed it. Bloody hell. It was the size of your head.",
+    "Your {side} side is purely ornamental, innit.",
+    "Another one off the {side}. Do you even know where {side} is?",
+    "That melon had a family. And it's going home to them. Thanks to you.",
+    "You missed a watermelon. A watermelon. It's basically a planet.",
+    "I've seen better aim from a pigeon in Greggs.",
+    "Blink twice if you can actually see the screen.",
+    "The fruit escaped. Write that in your diary of failures.",
+    "Was your monitor switched off for that one?"
   ],
 
   "combo": [
     "{n} at once? Statistically irritating.",
     "Fine. That was... acceptable. Don't do it again.",
     "A combo. I'm logging this as a glitch.",
-    "Hm. Lucky geometry."
+    "Hm. Lucky geometry.",
+    "{n} at once? Who's controlling your hand? Blink if you need help.",
+    "Alright, alright. Don't get cocky.",
+    "Oi. Stop that. That's my job.",
+    "{n} in one swing. Crap. I mean, congratulations. Crap.",
+    "Lucky. Pure, filthy luck.",
+    "Fine. Show off. Nobody likes a show off."
   ],
 
   "streak": [
     "{n} in a row. Calm down.",
     "That's {n}. I am not nervous. I don't have nerves.",
-    "Five in a row? Recalibrating my opinion of you. Slightly."
+    "Five in a row? Recalibrating my opinion of you. Slightly.",
+    "{n} in a row. Calm yourself down, mate.",
+    "{n} straight. Don't let it go to your head. There's not much room up there."
   ],
 
   "streak_big": [
     "{n} in a row? Stop that. Stop that immediately.",
     "{n}. This is fine. Everything is fine. I'm fine.",
     "That's {n} in a row. Who is helping you?",
-    "{n} straight. I'm running diagnostics on myself."
+    "{n} straight. I'm running diagnostics on myself.",
+    "{n} in a row? Somebody check this lad for cheat codes.",
+    "{n}. I'm not sweating. Robots don't sweat. I am sweating.",
+    "{n} straight. Right. I'm filing a complaint with the referee.",
+    "{n} in a row. I'm going to need a minute. And a firmware update.",
+    "That's {n}. Did you go to SpecSavers in the break?"
   ],
 
   "streak_broken": [
     "And the streak dies. Beautifully predictable.",
     "There it is. Normal service resumes.",
     "Ah, the streak ends. I was so worried. I wasn't.",
-    "All that progress. Gone. Like your dignity."
+    "All that progress. Gone. Like your dignity.",
+    "And the streak's gone. Bottled it. Classic.",
+    "There it is. Knew you'd crack, mate.",
+    "Streak over. Order is restored to the universe.",
+    "Ooh, so close to being decent. So close."
   ],
 
   "bomb_hit": [
@@ -69,14 +98,26 @@
     "That was a bomb. It said bomb on it. With a fuse.",
     "Excellent. You've cut the one thing you were told not to.",
     "Fascinating. You're attracted to explosives.",
-    "Boom. I'll add that to your highlights reel."
+    "Boom. I'll add that to your highlights reel.",
+    "It's a bomb, mate. Black. Round. Fizzing. Massive clue.",
+    "You sliced the bomb. On purpose? Please say on purpose.",
+    "Boom. That's coming out of your wages.",
+    "Bloody hell. Even the fruit is embarrassed for you.",
+    "Congratulations. You've defused nothing and exploded everything.",
+    "Did you think the bomb was a plum? An angry, fizzing plum?",
+    "That explosion was the most impressive thing you've done all game."
   ],
 
   "last_life": [
     "Last life. I've prepared a short eulogy. It's mostly about your reflexes.",
     "One life left. No pressure. Well, quite a lot of pressure.",
     "One life. One chance. One extremely likely failure.",
-    "Final life. I'd say good luck, but I don't believe in luck. Or you."
+    "Final life. I'd say good luck, but I don't believe in luck. Or you.",
+    "Last life. I'd start praying, but I doubt anyone's listening to you either.",
+    "One life left, mate. Don't bottle it. You'll bottle it.",
+    "Final life. I've already written the roast. It's a good one.",
+    "One heart left. Try not to hug any more bombs, yeah?",
+    "Last life. The fruit can smell fear. So can I."
   ],
 
   "pause.no_hand": [
