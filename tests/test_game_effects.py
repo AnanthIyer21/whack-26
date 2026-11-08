@@ -132,3 +132,17 @@ def test_rival_laughs_only_at_bombs_and_for_a_good_while():
     sc._bomb_hit(Bomb((500, 300), (0, 0), 0, 0), 10.0)
     assert sc.rival.laughing(10.1) and sc.rival.laughing(12.5)       # still cackling 2.5 s later
     assert not sc.rival.laughing(13.0)
+
+
+def test_rival_bubble_and_laugh_draw_without_errors():
+    import pygame
+    from game.rival_ui import RivalDisplay
+    sc = _scene_with([])
+    r = RivalDisplay(sc.app, 140)
+    r.show({"text": "That was a bomb. It said bomb on it.", "mood": "gloating", "duration": 2}, 1.0)
+    surf = pygame.Surface((1280, 720))
+    r.draw(surf, 1.5, (1190, 90), 1110)                 # bubble showing
+    r.laugh(2.0)
+    r.draw(surf, 2.3, (1190, 90), 1110)                 # laughing (pineapple art if present) + bubble
+    r.draw(surf, 1.0, (640, 400), 520, thinking=True)   # game-over "..." bubble
+    assert r.laughing(2.3)
