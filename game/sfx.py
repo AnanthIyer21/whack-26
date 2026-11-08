@@ -48,7 +48,7 @@ EVENT_SOUNDS = {
     "resume": ["sfx_countdown_go"],
     "game_over": ["sfx_game_over"],
 }
-LAYERS = {}             # extra sounds layered on an event, e.g. {"slice": ["sfx_splat"]} (splat dropped)
+LAYERS = {}             # extra sounds layered on an event: {"event": ["sfx_name", ...]}
 WHOOSHES = ["sfx_whoosh_1", "sfx_whoosh_2"]
 MUSIC = {"play": "music_game.ogg", "menu": "music_menu.ogg"}
 

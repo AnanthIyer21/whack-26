@@ -18,6 +18,8 @@ import soundfile as sf
 ROOT = os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", "assets")
 OGA = "https://opengameart.org/sites/default/files/"
 SR = 44100
+SLICE_MAX = 0.45      # slices are cut to this length (s) with a fade, so they stay snappy
+SLICE_FADE = 0.08
 
 PACKS = {
     # key: (zip url, page url, title, author, licence)
@@ -31,6 +33,12 @@ PACKS = {
             "80 CC0 RPG SFX", "rubberduck", "CC0"),
     "swish": (OGA + "swishes.zip", "https://opengameart.org/content/swishes-sound-pack",
               "Swishes Sound Pack", "artisticdude", "CC0"),
+    "swords": (OGA + "sword_-_starninjas_1.zip",
+               "https://opengameart.org/content/20-sword-sound-effects-attacks-and-clashes",
+               "20 Sword Sound Effects (Attacks and Clashes)", "StarNinjas", "CC0"),
+    "weapons": (OGA + "weapons-apparel.zip",
+                "https://opengameart.org/content/fantasy-weapons-and-apparel-sfx-library",
+                "Fantasy Weapons and Apparel SFX Library", "Vehicle", "CC0"),
     "synth": (OGA + "50-CC0-retro-synth-SFX.zip", "https://opengameart.org/content/50-cc0-retro-synth-sfx",
               "50 CC0 retro / synth SFX", "rubberduck", "CC0"),
 }
@@ -41,15 +49,18 @@ CHIP = "Juhani Junkala [Retro Game Music Pack] "
 # output name -> (pack, path inside zip, gain relative to peak 1.0)
 # A list of (pack, path, gain, offset_s) instead means: mix those layers, then normalise to the last gain.
 SOUNDS = {
-    # movie-style slash ("shwing"): a quiet air swish under a bright metal blade ring
-    "sfx_slice_1": [("swish", "swishes/swish-3.wav", 0.45, 0.0), ("rpg", "blade_02.ogg", 1.0, 0.02), 0.95],
-    "sfx_slice_2": [("swish", "swishes/swish-7.wav", 0.45, 0.0), ("rpg", "blade_03.ogg", 1.0, 0.02), 0.95],
-    "sfx_slice_3": [("swish", "swishes/swish-9.wav", 0.45, 0.0),
-                    ("sfx512", SFX512 + "Weapons/Melee/sfx_wpn_sword2.wav", 0.7, 0.01),
-                    ("rpg", "blade_02.ogg", 0.8, 0.03), 0.95],
+    # violent knife-sharpener slash: metal clash (the hit) + knife scrape ("shhing") + faint air
+    "sfx_slice_1": [("weapons", "sfx/sword-knife-clash-16.wav", 0.9, 0.0),
+                    ("weapons", "sfx/knife-unsheathe-04.wav", 0.8, 0.0),
+                    ("swish", "swishes/swish-3.wav", 0.25, 0.0), 0.95],
+    "sfx_slice_2": [("weapons", "sfx/sword-knife-clash-15.wav", 0.9, 0.0),
+                    ("weapons", "sfx/knife-unsheathe-03.wav", 0.8, 0.0),
+                    ("swish", "swishes/swish-7.wav", 0.25, 0.0), 0.95],
+    "sfx_slice_3": [("weapons", "sfx/sword-knife-clash-29.wav", 0.9, 0.0),
+                    ("swords", "sword - StarNinjas/sword.6.ogg", 0.8, 0.0),
+                    ("swish", "swishes/swish-9.wav", 0.25, 0.0), 0.95],
     "sfx_whoosh_1": ("swish", "swishes/swish-1.wav", 0.75),
     "sfx_whoosh_2": ("swish", "swishes/swish-5.wav", 0.75),
-    "sfx_splat": ("rpg", "creature_slime_03.ogg", 0.7),
     "sfx_explosion": ("sfx512", SFX512 + "Explosions/Long/sfx_exp_long4.wav", 1.0),
     "sfx_countdown_beep": ("synth", "synth_beep_01.ogg", 0.6),
     "sfx_countdown_go": ("synth", "power_up_01.ogg", 0.7),
@@ -113,6 +124,10 @@ def main():
                 new[:len(mix)] += mix
             new[pad:pad + len(part)] += part[:, :2]
             mix = new
+        if name.startswith("sfx_slice") and len(mix) > SLICE_MAX * SR:
+            mix = mix[:int(SLICE_MAX * SR)]
+            f = int(SLICE_FADE * SR)
+            mix[-f:] *= np.linspace(1, 0, f)[:, None]
         out = (mix / (np.abs(mix).max() or 1.0) * gain).astype(np.float32)
         path = os.path.join(ROOT, "sounds", name + ".ogg")
         sf.write(path, out, SR, format="OGG", subtype="VORBIS")

@@ -31,9 +31,8 @@ The machine-readable version is `tools/asset_spec.py`; `python tools/check_asset
 ## Sounds (`assets/sounds/`, all `.ogg`)
 | Event | File |
 |---|---|
-| fruit cut | `sfx_slice_1.ogg`, `sfx_slice_2.ogg`, `sfx_slice_3.ogg`: metallic movie-style slash (pick one at random) |
+| fruit cut | `sfx_slice_1.ogg`, `sfx_slice_2.ogg`, `sfx_slice_3.ogg`: violent knife-sharpener slash, metal clash + blade scrape (pick one at random) |
 | fast swing starts | `sfx_whoosh_1.ogg`, `sfx_whoosh_2.ogg` |
-| (unused for now) | `sfx_splat.ogg`: dropped from slices, kept in case we want it back |
 | bomb hit | `sfx_explosion.ogg`: on the visual boom (after `boom.WINDUP`), full volume, never ducked |
 | 3, 2, 1 | `sfx_countdown_beep.ogg` |
 | GO | `sfx_countdown_go.ogg` |
