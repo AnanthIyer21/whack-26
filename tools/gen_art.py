@@ -489,6 +489,12 @@ def main():
     save(bubble_tail(), "bubble_tail.png")
     save(background(False), "bg_game.png")
     save(background(True), "bg_title.png")
+    # Aliases at the paths the game on staging already loads (game/rival_ui.py, game/background.py)
+    import shutil
+    os.makedirs(os.path.join(OUT, "avatar"), exist_ok=True)
+    for m in S.MOODS:
+        shutil.copy(os.path.join(OUT, f"rival_{m}.png"), os.path.join(OUT, "avatar", f"{m}.png"))
+    shutil.copy(os.path.join(OUT, "bg_game.png"), os.path.join(OUT, "background.png"))
 
 
 if __name__ == "__main__":
