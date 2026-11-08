@@ -29,13 +29,16 @@ Most AI waits for you to type. We wanted one that watches you in real time and r
 - Fruit flies up; cut it with a fast swing for points, combos and streaks. Hit a bomb and you lose one of 3 lives. A run lasts 60 seconds.
 - **Auto-pause:** open your hand, drop it, or bring in a second hand and the game freezes instantly. Close your fist again for a 3-2-1 and you're back.
 - **GRIP-9000**, a smug pixel-art pineapple, watches every move and heckles you out loud *in the moment*: it cackles when you hit a bomb, gets rattled when you're on a streak, mocks you for pausing, and spots your habits (always missing on the left? it notices). Its big-moment roasts are written live by Claude and voiced by ElevenLabs; everything else comes from a pre-voiced bank so it's instant.
+- **It reads your face too:** smile, laugh, look shocked or look away and GRIP-9000 reacts to your expression.
+- **Party mode:** type in everyone's names, take turns, and GRIP-9000 names the winner and roasts last place on the leaderboard (stored in SQLite, plus an all-time top 10).
 - Knife-sharp slash sounds, a whoosh on every swing, music that ducks under the rival's voice.
 
 ## How we built it
-One Python 3.11 program, three threads talking through small shared interfaces:
+One Python program, four threads talking through small shared interfaces:
 - **Vision thread:** OpenCV webcam → **MediaPipe** hand landmarks (21 points per hand, pretrained, not ours) → **our own maths**: finger curl from 3D landmark distances and angles decides grip / open / unclear, with a stabiliser so it doesn't flicker; a One Euro filter smooths the blade; the blade runs along your fist so tilting your fist tilts the sword. Publishes an immutable `HandState` every frame. **Nothing is trained.**
 - **Game thread:** pygame-ce at a steady 60 fps. Fruit and blade hitboxes, slicing only above a speed threshold, combos, streaks, bombs, lives, the auto-pause state machine, and lag bridging (if tracking drops a frame, the blade's path is still checked so fast swings don't miss).
 - **Rival thread:** reads game events (slice, miss, combo, bomb, pause...) and decides *whether* to speak with priorities, cooldowns and a global gap so it never talks over itself. Small moments use a bank of lines pre-voiced with ElevenLabs (instant). Big moments (game over, last life, patterns in how you play) are written live by **Claude** (claude-haiku-5-5) with a strict persona, then voiced with **ElevenLabs Flash**. Some Claude lines are pre-fetched and pre-voiced before they're needed.
+- **Face thread:** MediaPipe face landmarks → our own expression thresholds with rolling calibration and hysteresis (smiling, laughing, shock, frowning, looking away), so GRIP-9000 can react to your face, not just your sword.
 - **Art and sound:** all pixel art drawn in code by us (the pineapple's four moods, fruit and halves, sword, explosions); CC0 sound effects layered and processed into a metal-clash-plus-knife-scrape slash.
 
 ## Challenges we ran into
@@ -57,12 +60,12 @@ One Python 3.11 program, three threads talking through small shared interfaces:
 - Measure everything: our latency and reliability numbers changed what we fixed.
 
 ## What's next for GRIP-9000
-- Free-hand gesture moves (block, special attack) and facial reactions to what the player does.
+- Free-hand gesture moves (block, special attack).
 - Two-player duels, with GRIP-9000 commentating both.
 - A memory of your past runs so the roasts get personal.
 
 ## Built with
-`python` `pygame-ce` `opencv` `mediapipe` `numpy` `claude` `anthropic-api` `elevenlabs` `multithreading`
+`python` `pygame-ce` `opencv` `mediapipe` `numpy` `sqlite` `claude` `anthropic-api` `elevenlabs` `multithreading`
 
 ## Links
 - Code: https://github.com/AnanthIyer21/whack-26

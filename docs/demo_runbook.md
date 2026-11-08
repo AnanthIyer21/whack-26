@@ -2,7 +2,7 @@
 
 > Team: **The Flairy Fairies**. Owner: RBadiadka7. Devpost submit by **10:30** (hard deadline 11:00 GMT).
 > Judging is a **3 minute slot** with the incident.io judges **in the afternoon**, so rehearsals can happen after
-> we submit. Still to confirm with the organisers: live demo at the slot, or only what's on Devpost?
+> we submit. **Confirmed: it's a live demo** at the slot, so the pre-flight checklist and fallbacks below matter.
 
 ## Reliability check (all four of us, Ananth's laptop, ~20 to 25 min; right hands only ~12 min)
 ```bash
@@ -13,7 +13,7 @@ python tools/reliability_check.py --person Aaron --hand right --lighting "demo s
 #   ...same for Ananth, Pricysquirrl, RBadiadka7
 python tools/reliability_summary.py                   # table -> results/reliability_table.md
 python tools/smoke_test.py --game real                # note the fps it prints
-python main.py --vision real --game real --rival real  # play 3-4 games: fills logs/latency.csv
+python main.py --vision real --game real --rival real --face  # play 3-4 games: fills logs/latency.csv
 python tools/latency_report.py                        # check the event -> voice numbers
 python tools/make_numbers_slide.py --game-fps 60      # -> results/numbers_slide.png (use the measured fps)
 git add results/ && git commit -m "Reliability + latency results and numbers slide" && git push
@@ -39,13 +39,15 @@ you weren't ready, ESC saves and quits. Failures count; that's the point.
 - [ ] Camera permission OK; external cams unplugged (or `CAMERA_INDEX` set)
 - [ ] Front light on the player's hand; plain background; nobody else's hand in frame
 - [ ] `.env` present (Claude + ElevenLabs keys); `python tools/check_keys.py` passes
-- [ ] Game started and sitting on the title screen: `python main.py --vision real --game real --rival real`
+- [ ] Game started and sitting on the title screen: `python main.py --vision real --game real --rival real --face`
+- [ ] Player's face lit and in frame too (face reactions); if face tracking misbehaves, restart without `--face`
 - [ ] Backup video on the desktop **and** a USB stick, QuickTime open, ready to play
 - [ ] Phone hotspot ready (Pricysquirrl)
 - [ ] Numbers slide open in Preview on a second space (`Ctrl+→`)
 
 ## Fallback commands
 ```bash
+python main.py --vision real --game real --rival real            # face reactions misbehaving: drop --face
 python main.py --vision mouse --game real --rival real            # camera dead: mouse sword
 python main.py --vision real --game real --rival real --offline   # wifi/APIs dead: pre-voiced bank
 python main.py --vision mouse --game real --rival real --offline  # both

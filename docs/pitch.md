@@ -25,14 +25,17 @@
 3. **Hit a bomb on purpose**: explosion, GRIP-9000 cackles.
 4. **Open the hand**: game freezes instantly. "Open your hand, drop it, or bring in a second hand: it pauses. No buttons." GRIP-9000 mocks the pause.
 5. **Fist again**: 3-2-1, back in.
-6. Play out the timer or lose the last life → **game over roast** (live from Claude).
+6. **Pull a face**: a big smile or a shocked face at the camera; GRIP-9000 reacts to your expression.
+   "It doesn't just watch your hand. It reads your face too." 
+7. Play out the timer or lose the last life → **game over roast** (live from Claude).
 
 **1:30 to 2:00, how it works** (slide or just talk over the game-over screen)
-> "Three threads on one laptop. Vision: MediaPipe gives us 21 points on your hand, and our own maths
+> "Four threads on one laptop. Vision: MediaPipe gives us 21 points on your hand, and our own maths
 > turns them into grip, open and the blade angle: finger curl from the 3D landmarks, a stabiliser,
 > One Euro smoothing. Nothing is trained. The game runs at 60 frames a second. And the rival decides
 > *when* to speak: small moments come from a pre-voiced bank so they're instant; the big moments are
-> written live by Claude and voiced by ElevenLabs."
+> written live by Claude and voiced by ElevenLabs. A face thread reads your expression from MediaPipe face
+> landmarks, again with our own thresholds, so it laughs back when you smile."
 
 **2:00 to 2:20, numbers** (show `results/numbers_slide.png`)
 > "We measured it live: [[NN]] milliseconds from camera to game, [[NN]] percent of grips and opens recognised
@@ -46,10 +49,11 @@
 ## If something fails (Ananth handles, narrator keeps talking)
 | Failure | Do this | Say |
 |---|---|---|
+| Face reactions misbehaving | Restart without `--face` (about 10 s) | carry on, don't mention it |
 | Camera won't open / wrong camera | Restart with `--vision mouse` (hold left button) | "Camera's shy; same game with the mouse as the sword." |
 | Tracking flaky (lighting) | Move the lamp / step closer; if still bad → mouse | |
 | Wifi / Claude / ElevenLabs down | Restart with `--rival real --offline` (pre-voiced bank) | nothing; it still talks |
-| Game crashes | Restart: `python main.py --vision real --game real --rival real` (about 10 s) | "Live demo, live bugs." |
+| Game crashes | Restart: `python main.py --vision real --game real --rival real --face` (about 10 s) | "Live demo, live bugs." |
 | Everything dies | Play the backup video (desktop, also on USB) | "Here's one we recorded earlier." |
 
 ## Q&A prep
