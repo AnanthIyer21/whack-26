@@ -13,6 +13,8 @@ import math
 import pygame
 
 SS = 3
+HALF_WIDTH = 7.0       # blade half-width at the collar, px (the fire glow uses these too)
+CURVE = 0.05           # sori: how far the tip bends back, as a fraction of the blade length
 
 
 def _k(col, f):
@@ -22,12 +24,12 @@ def _k(col, f):
 def make_katana(blade_px, frozen=False):
     L = blade_px * SS
     handle = 0.30 * L
-    w0 = 7.0 * SS                  # blade half-width at the collar
+    w0 = HALF_WIDTH * SS           # blade half-width at the collar
     width = int(10 * w0)
     height = int(2 * L + 10 * SS)
     s = pygame.Surface((width, height), pygame.SRCALPHA)
     cx, py = width / 2, height / 2  # pivot: where the blade leaves the fist
-    curve = 0.05 * L                # sori: the blade bends back towards the tip
+    curve = CURVE * L               # sori: the blade bends back towards the tip
 
     steel = (150, 150, 155) if frozen else (175, 185, 200)
     polish = (175, 175, 180) if frozen else (232, 238, 248)

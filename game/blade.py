@@ -47,6 +47,7 @@ class Blade:
         self.draw_t0 = 0.0
         self.speed = 0.0           # latest tip speed (screen heights / s), for debug + effects
         self.fire = BladeFire()     # streak fire (x3 heated, x4 on fire, x5 blue inferno)
+        self.fire.prewarm_aura(self.length)
         self._hist = []            # recent fresh samples: (t, base, angle, when)
         self._swing_speed = 0.0    # speed of the last normal (un-lagged) segment
         self.bridges = 0           # how many lag gaps we've bridged (debug overlay)
@@ -205,7 +206,7 @@ class Blade:
             surf.blit(glow_layer, trail_box, area=trail_box)
             glow_layer.fill((0, 0, 0, 0), trail_box)
         if not self.visible:
-            self.fire.update_and_draw(surf, self.base, self.tip(), now, visible=False)  # let embers die out
+            self.fire.update_and_draw(surf, self.base, self.tip(), now, visible=False, full_length=self.length)  # let embers die out
             return
 
         g = self.grow(now)
@@ -217,7 +218,8 @@ class Blade:
             img.fill((0, 0, 0, 0), pygame.Rect(0, 0, img.get_width(), int(pivot_y - self.length * g)))
         rot = pygame.transform.rotozoom(img, angle_to_rotozoom(self.angle), 1.0)
         surf.blit(rot, rot.get_rect(center=(int(self.base[0]), int(self.base[1]))))
-        self.fire.update_and_draw(surf, self.base, self.tip(now), now, visible=not frozen)
+        self.fire.update_and_draw(surf, self.base, self.tip(now), now, visible=not frozen,
+                               full_length=self.length)
 
         # glint at the tip right as the draw finishes ("shing")
         since = now - self.draw_t0 - C.DRAW_TIME
