@@ -143,7 +143,16 @@ class Rival:
         self.prefetch_busy = set()
         self.next_prefetch = 0.0
 
+    def _face_note(self, text):
+        try:
+            import face
+            face.note(text)
+        except Exception:
+            pass
+
     def _engine_log(self, now, text):
+        if "face" in text:
+            self._face_note("GRIP-9000: " + text)
         if os.environ.get("RIVAL_VERBOSE"):
             log(". " + text)
 
@@ -153,6 +162,8 @@ class Rival:
     # ---------------------------------------------------------------- events
 
     def on_event(self, event, now):
+        if event["type"] == shared.FACE:
+            self._face_note("GRIP-9000 received face(" + event["expression"] + ")")
         if event["type"] == shared.GAME_START:
             self.detector.reset()
             intro = self.prefetched.get("intro")
@@ -263,6 +274,8 @@ class Rival:
         if decision.key == "pattern":
             self.detector.mark_spoken(decision.vars["pattern"])
         self.latency.write(decision.key, decision.source, spoken_as, decision.origin_t, decided_t, audio_t, text)
+        if decision.key in ("face", "face_combo"):
+            self._face_note("SPOKEN (" + spoken_as + "): " + text)
         ms = round((audio_t - decision.origin_t) * 1000)
         log(decision.mood.upper() + " " + decision.key + " via " + spoken_as
             + (" (cut-in)" if decision.interrupt else "") + ": " + text + "  [" + str(ms) + " ms]")

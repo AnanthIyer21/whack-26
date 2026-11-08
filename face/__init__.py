@@ -8,12 +8,26 @@ Expressions only: no identity, no images stored.
 
 import time
 import traceback
+from collections import deque
 
 import shared
 from face import config as C
 
-# Live numbers for main.py --diag and tools/face_debug.py (read-only for others).
-diag = {"ms": 0.0, "fps": 0.0, "faces": 0, "state": "starting", "levels": {}}
+# Live numbers for main.py --diag / --facedebug and tools/face_debug.py (read-only for others).
+diag = {"ms": 0.0, "fps": 0.0, "faces": 0, "state": "starting", "levels": {}, "holds": {}, "armed": {},
+        "calibrated": False}
+
+# --facedebug: what happened to each face reaction, newest last (face thread + GRIP-9000 both write here).
+debug_log = deque(maxlen=8)
+debug_print = False
+
+
+def note(text):
+    """Record a face-pipeline step for the --facedebug overlay (and terminal)."""
+    stamp = time.strftime("%H:%M:%S")
+    debug_log.append((time.monotonic(), text))
+    if debug_print:
+        print("[facedebug " + stamp + "] " + text)
 
 
 def run(stop_event):
@@ -93,9 +107,17 @@ def _step(detector, tracker, frame, t, last_box, last_seen_t, player_face, fist_
     current, fired = tracker.update(t, face.signals, face.yaw, face.pitch)
     diag["state"] = current if tracker.calibrated(t) else "calibrating"
     diag["levels"] = dict(tracker.last_levels)
+    diag["calibrated"] = tracker.calibrated(t)
+    holds = {}
+    for name in C.PRIORITY:
+        since = tracker.held_since.get(name)
+        holds[name] = 0.0 if since is None else min(1.0, (t - since) / C.HOLD[name])
+    diag["holds"] = holds
+    diag["armed"] = dict(tracker.armed)
     _publish(tracker, t, True, len(faces), face.signals)
     if fired is not None:
         shared.post_event(shared.ev_face(fired[0], fired[1]))
+        note("FACE FIRED: " + fired[0] + " (strength " + str(round(fired[1], 2)) + ") -> sent to GRIP-9000")
     return face.box, t
 
 

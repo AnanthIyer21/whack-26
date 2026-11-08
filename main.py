@@ -126,7 +126,10 @@ def main():
     parser.add_argument("--offline", action="store_true", help="rival uses the bank only, no API calls")
     parser.add_argument("--diag", action="store_true", help="print vision health every second; save camera snapshots to logs/")
     parser.add_argument("--face", action="store_true", help="extension: GRIP-9000 reads your expressions live (docs/FACE_SPEC.md)")
+    parser.add_argument("--facedebug", action="store_true", help="--face plus a live face-debug panel on the game window and in the terminal")
     args = parser.parse_args()
+    if args.facedebug:
+        args.face = True
 
     load_dotenv(os.path.join(os.path.dirname(os.path.abspath(__file__)), ".env"))
 
@@ -145,6 +148,11 @@ def main():
     if args.face:
         import face
         print("[main] face: on (expressions only, nothing stored)")
+        if args.facedebug:
+            from face import overlay
+            face.debug_print = True
+            overlay.install()
+            print("[main] face debug panel: bottom-left of the game window")
         threads.append(start_thread("face", face.run, {"stop_event": shared.stop_event}))
     if args.diag:
         threads.append(start_thread("diag", diag_loop, {"stop_event": shared.stop_event, "face_on": args.face}))
