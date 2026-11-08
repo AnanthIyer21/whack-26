@@ -23,7 +23,7 @@ python main.py --vision real --game real --rival real --face --diag
 5. In the `[diag]   face:` lines check the face thread is ~10 fps and ~10 ms/frame, and the hand fps is unchanged.
 
 Tell me what fired wrongly (or didn't fire) and I'll tune `face/config.py`. Any expression that keeps misfiring can be
-switched off in one edit: `ENABLED_EXPRESSIONS` in `face/config.py`. When happy: `gh pr merge <PR> --merge`.
+switched off in one edit: `ENABLED_EXPRESSIONS` in `face/config.py`. When happy: `gh pr merge 14 --merge` (PR #14).
 
 ## What was built (7 commits on `ananth`)
 | Part | Files |
