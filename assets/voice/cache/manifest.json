@@ -1,0 +1,596 @@
+{
+ "lines": {
+  "10 in a row? Stop that. Stop that immediately.": {
+   "duration": 4.365,
+   "file": "5f5a84dfe102cad7.mp3",
+   "key": "streak_big"
+  },
+  "10 straight. I'm running diagnostics on myself.": {
+   "duration": 3.808,
+   "file": "a53277bf0e4ac8a9.mp3",
+   "key": "streak_big"
+  },
+  "10. This is fine. Everything is fine. I'm fine.": {
+   "duration": 5.898,
+   "file": "c1c5b49c524cad3c.mp3",
+   "key": "streak_big"
+  },
+  "15 in a row? Stop that. Stop that immediately.": {
+   "duration": 4.923,
+   "file": "754d817e1f567605.mp3",
+   "key": "streak_big"
+  },
+  "15 straight. I'm running diagnostics on myself.": {
+   "duration": 4.458,
+   "file": "125460621fc5ca62.mp3",
+   "key": "streak_big"
+  },
+  "15. This is fine. Everything is fine. I'm fine.": {
+   "duration": 6.641,
+   "file": "f8d5769120340e90.mp3",
+   "key": "streak_big"
+  },
+  "20 in a row? Stop that. Stop that immediately.": {
+   "duration": 4.644,
+   "file": "7df2859243b1e2c4.mp3",
+   "key": "streak_big"
+  },
+  "20 straight. I'm running diagnostics on myself.": {
+   "duration": 4.133,
+   "file": "07f701ff10c59728.mp3",
+   "key": "streak_big"
+  },
+  "20. This is fine. Everything is fine. I'm fine.": {
+   "duration": 6.316,
+   "file": "c04c393df1dac279.mp3",
+   "key": "streak_big"
+  },
+  "25 in a row? Stop that. Stop that immediately.": {
+   "duration": 4.644,
+   "file": "203b08354fb61e34.mp3",
+   "key": "streak_big"
+  },
+  "25 straight. I'm running diagnostics on myself.": {
+   "duration": 5.155,
+   "file": "66a68fd3a222d008.mp3",
+   "key": "streak_big"
+  },
+  "25. This is fine. Everything is fine. I'm fine.": {
+   "duration": 6.548,
+   "file": "e8c5ca41b571e41f.mp3",
+   "key": "streak_big"
+  },
+  "30 in a row? Stop that. Stop that immediately.": {
+   "duration": 4.783,
+   "file": "76de55f0d53de0bb.mp3",
+   "key": "streak_big"
+  },
+  "30 straight. I'm running diagnostics on myself.": {
+   "duration": 4.04,
+   "file": "a2421b3381804518.mp3",
+   "key": "streak_big"
+  },
+  "30. This is fine. Everything is fine. I'm fine.": {
+   "duration": 6.177,
+   "file": "70cc35111dc01ca1.mp3",
+   "key": "streak_big"
+  },
+  "4 at once? Statistically irritating.": {
+   "duration": 3.019,
+   "file": "c2cc95dea68a4e22.mp3",
+   "key": "combo"
+  },
+  "5 at once? Statistically irritating.": {
+   "duration": 2.694,
+   "file": "ace3a44eaf96e2c6.mp3",
+   "key": "combo"
+  },
+  "5 in a row. Calm down.": {
+   "duration": 1.858,
+   "file": "1d30332a893fc643.mp3",
+   "key": "streak"
+  },
+  "6 at once? Statistically irritating.": {
+   "duration": 3.065,
+   "file": "107651298c5ad8ed.mp3",
+   "key": "combo"
+  },
+  "A combo. I'm logging this as a glitch.": {
+   "duration": 3.344,
+   "file": "8aef6d3df9b0c358.mp3",
+   "key": "combo"
+  },
+  "A comeback. How sentimental. I hate it.": {
+   "duration": 4.04,
+   "file": "51f396c9a2f7dad5.mp3",
+   "key": "pattern.comeback"
+  },
+  "A fruit. Cut. Shall I call the newspapers?": {
+   "duration": 3.762,
+   "file": "8bf67d5bfa300434.mp3",
+   "key": "slice"
+  },
+  "A new record. I demand a recount.": {
+   "duration": 3.158,
+   "file": "a08db248597ad4ff.mp3",
+   "key": "game_over.new_best"
+  },
+  "Ah, the streak ends. I was so worried. I wasn't.": {
+   "duration": 5.573,
+   "file": "c9df91ed7a155f03.mp3",
+   "key": "streak_broken"
+  },
+  "Ah. Another human. Hold the sword by the handle. That's the not-pointy bit.": {
+   "duration": 7.848,
+   "file": "fd41120a9ef83d02.mp3",
+   "key": "intro"
+  },
+  "All that progress. Gone. Like your dignity.": {
+   "duration": 4.365,
+   "file": "ea9fc4682bd3becc.mp3",
+   "key": "streak_broken"
+  },
+  "And the streak dies. Beautifully predictable.": {
+   "duration": 3.808,
+   "file": "30af4ae4ab9965de.mp3",
+   "key": "streak_broken"
+  },
+  "Another one escapes on the left. They're forming a union.": {
+   "duration": 4.226,
+   "file": "2e978f7d4c973cb8.mp3",
+   "key": "miss"
+  },
+  "Another one escapes on the right. They're forming a union.": {
+   "duration": 3.947,
+   "file": "5c4a71b8c5b71599.mp3",
+   "key": "miss"
+  },
+  "Are you still there, or did you quit like a human?": {
+   "duration": 3.808,
+   "file": "64b15d529fbc9f07.mp3",
+   "key": "pause_long"
+  },
+  "Bomb magnet detected. It's you. You're the magnet.": {
+   "duration": 4.737,
+   "file": "c7d44cc956bddba1.mp3",
+   "key": "pattern.bomb_magnet"
+  },
+  "Boom. I'll add that to your highlights reel.": {
+   "duration": 2.972,
+   "file": "488e1193b02826eb.mp3",
+   "key": "bomb_hit"
+  },
+  "Both hands. Cheating detected. Shameful.": {
+   "duration": 3.901,
+   "file": "ac4cf230c786ea94.mp3",
+   "key": "pause.two_hands"
+  },
+  "Did you drop the sword? It's imaginary. That's impressive.": {
+   "duration": 5.108,
+   "file": "60bef1f535879c1c.mp3",
+   "key": "pause.not_gripping"
+  },
+  "Don't let it go to your head. There's not much room up there.": {
+   "duration": 4.133,
+   "file": "748323fcc09b9b66.mp3",
+   "key": "slice"
+  },
+  "Even a toaster could have done that.": {
+   "duration": 2.276,
+   "file": "029fae0f96167ec4.mp3",
+   "key": "slice"
+  },
+  "Everything on the left escapes. It's like a nature reserve over there.": {
+   "duration": 4.876,
+   "file": "30ff56a11df13e30.mp3",
+   "key": "pattern.side_bias"
+  },
+  "Everything on the right escapes. It's like a nature reserve over there.": {
+   "duration": 4.783,
+   "file": "89a10818c10c7bff.mp3",
+   "key": "pattern.side_bias"
+  },
+  "Excellent. You've cut the one thing you were told not to.": {
+   "duration": 4.226,
+   "file": "cb1534e03d7f8443.mp3",
+   "key": "bomb_hit"
+  },
+  "Fascinating. You're attracted to explosives.": {
+   "duration": 3.529,
+   "file": "0e5cb5382b0d16b4.mp3",
+   "key": "bomb_hit"
+  },
+  "Final life. I'd say good luck, but I don't believe in luck. Or you.": {
+   "duration": 6.734,
+   "file": "655f264939654ee0.mp3",
+   "key": "last_life"
+  },
+  "Fine. That was... acceptable. Don't do it again.": {
+   "duration": 4.83,
+   "file": "d59e0576ce69d787.mp3",
+   "key": "combo"
+  },
+  "Five in a row? Recalibrating my opinion of you. Slightly.": {
+   "duration": 5.155,
+   "file": "a9018428fc6e71fe.mp3",
+   "key": "streak"
+  },
+  "GRIP-9000 online. Please try not to embarrass your entire species.": {
+   "duration": 6.084,
+   "file": "97e0a0295b5aa0bb.mp3",
+   "key": "intro"
+  },
+  "Game over. I'd shake your hand, but you'd probably drop it.": {
+   "duration": 4.226,
+   "file": "b82e9da2c3e06979.mp3",
+   "key": "game_over.lives"
+  },
+  "Gravity: one. You: nil.": {
+   "duration": 2.322,
+   "file": "4838e3fce69999ee.mp3",
+   "key": "miss"
+  },
+  "Grip. It's in my name. Use it.": {
+   "duration": 3.622,
+   "file": "4a8088b17e7518e9.mp3",
+   "key": "pause.not_gripping"
+  },
+  "Half time. Let's review the tape. Actually, let's not.": {
+   "duration": 5.062,
+   "file": "c31c1e93e7144bd2.mp3",
+   "key": "halfway"
+  },
+  "Halfway. I'd say you're improving, but my honesty module won't let me.": {
+   "duration": 6.409,
+   "file": "110d259891d2d5fc.mp3",
+   "key": "halfway"
+  },
+  "Hand gone. Courage also gone, apparently.": {
+   "duration": 3.622,
+   "file": "7b4cf0e5b0c9efb2.mp3",
+   "key": "pause.no_hand"
+  },
+  "Hello? The fruit is right there. It's waiting for you.": {
+   "duration": 5.108,
+   "file": "e60627e2a1477313.mp3",
+   "key": "pattern.slump"
+  },
+  "Hiding won't save you. It just delays the inevitable.": {
+   "duration": 4.319,
+   "file": "8c86b209b7877ae3.mp3",
+   "key": "pause.no_hand"
+  },
+  "Highest score yet. I'm reporting this to my developers.": {
+   "duration": 3.808,
+   "file": "a3d840278159fcf5.mp3",
+   "key": "game_over.new_best"
+  },
+  "Hm. Lucky geometry.": {
+   "duration": 1.904,
+   "file": "e5c732e61e3bcbd5.mp3",
+   "key": "combo"
+  },
+  "I've run eleven million simulations of this game. You lose in all of them.": {
+   "duration": 5.248,
+   "file": "6b93c4800d2db9bf.mp3",
+   "key": "intro"
+  },
+  "I've seen screensavers with better reflexes.": {
+   "duration": 3.158,
+   "file": "8db148da4a9c7d72.mp3",
+   "key": "miss"
+  },
+  "Initialising contempt. Done. You may begin.": {
+   "duration": 4.365,
+   "file": "8fa45588b8828d67.mp3",
+   "key": "intro"
+  },
+  "It's a one-handed sword. One. Count them.": {
+   "duration": 4.319,
+   "file": "6b0b91db81c31f05.mp3",
+   "key": "pause.two_hands"
+  },
+  "Last life. I've prepared a short eulogy. It's mostly about your reflexes.": {
+   "duration": 6.687,
+   "file": "c73108b80f5094ee.mp3",
+   "key": "last_life"
+  },
+  "Long silence from your sword. Matches the silence from your fans.": {
+   "duration": 5.944,
+   "file": "3ff6ec0cf999fc8f.mp3",
+   "key": "pattern.slump"
+  },
+  "Lost a life and you're still going? That's... annoying.": {
+   "duration": 5.898,
+   "file": "67df5c3343fb35df.mp3",
+   "key": "pattern.comeback"
+  },
+  "Lucky.": {
+   "duration": 0.65,
+   "file": "69be8fde43ba0828.mp3",
+   "key": "slice"
+  },
+  "Make a fist. You know, like you mean it.": {
+   "duration": 3.39,
+   "file": "a462843a318f3622.mp3",
+   "key": "pause.not_gripping"
+  },
+  "Missed. As my models predicted.": {
+   "duration": 3.111,
+   "file": "4a323c04d826d0ec.mp3",
+   "key": "miss"
+  },
+  "Mm. Adequate.": {
+   "duration": 1.811,
+   "file": "074438bd4d43648d.mp3",
+   "key": "slice"
+  },
+  "New best score. Fine. I wasn't even trying. I was running at four percent.": {
+   "duration": 7.43,
+   "file": "d24e297860fb0095.mp3",
+   "key": "game_over.new_best"
+  },
+  "Nothing for six seconds. Are you buffering?": {
+   "duration": 2.879,
+   "file": "c75b3766aa43a097.mp3",
+   "key": "pattern.slump"
+  },
+  "Observation: your left side is a fruit sanctuary.": {
+   "duration": 3.808,
+   "file": "929c7b3343d2fbb0.mp3",
+   "key": "pattern.side_bias"
+  },
+  "Observation: your right side is a fruit sanctuary.": {
+   "duration": 3.855,
+   "file": "852629bba5e32fc2.mp3",
+   "key": "pattern.side_bias"
+  },
+  "Oh, you're back. Wonderful.": {
+   "duration": 2.183,
+   "file": "28cc339bc48cd708.mp3",
+   "key": "resume"
+  },
+  "One life left. No pressure. Well, quite a lot of pressure.": {
+   "duration": 4.644,
+   "file": "57a1145eb71b311d.mp3",
+   "key": "last_life"
+  },
+  "One life. One chance. One extremely likely failure.": {
+   "duration": 5.248,
+   "file": "aaa1fdfe4a565238.mp3",
+   "key": "last_life"
+  },
+  "Open hand? You're waving, not fighting.": {
+   "duration": 3.901,
+   "file": "fe4c008d38137031.mp3",
+   "key": "pause.not_gripping"
+  },
+  "Out of lives. Humanity had a good run. Mostly.": {
+   "duration": 4.644,
+   "file": "e6b38ed86b9fe299.mp3",
+   "key": "game_over.lives"
+  },
+  "Pausing is not a strategy. I've checked.": {
+   "duration": 3.344,
+   "file": "241b0558c7692187.mp3",
+   "key": "pattern.pause_addict"
+  },
+  "Quitting. Finally, a decision I agree with.": {
+   "duration": 3.437,
+   "file": "0fbef777916fe193.mp3",
+   "key": "game_over.quit"
+  },
+  "Rage quit detected. Saving it for the highlights.": {
+   "duration": 3.808,
+   "file": "679f0c3584821c2e.mp3",
+   "key": "game_over.quit"
+  },
+  "Ran away already?": {
+   "duration": 1.486,
+   "file": "e236985836e9c311.mp3",
+   "key": "pause.no_hand"
+  },
+  "Resuming humiliation.": {
+   "duration": 1.579,
+   "file": "bc1bdef99129e026.mp3",
+   "key": "resume"
+  },
+  "Sixty seconds of effort. I've logged it under comedy.": {
+   "duration": 3.994,
+   "file": "6bbdcfb9f7a3b535.mp3",
+   "key": "game_over.timer"
+  },
+  "Still waiting. I have infinite patience. You have sixty seconds.": {
+   "duration": 5.387,
+   "file": "d1d123442c9cab3b.mp3",
+   "key": "pause_long"
+  },
+  "Take your time. I'm computing pi in the meantime.": {
+   "duration": 4.087,
+   "file": "2292f2e2a53af7bd.mp3",
+   "key": "pause_long"
+  },
+  "Ten seconds left. I'm not sweating. I can't sweat.": {
+   "duration": 4.783,
+   "file": "53f67c5492102c11.mp3",
+   "key": "time_warning.rattled"
+  },
+  "Ten seconds left. Not that it matters.": {
+   "duration": 2.833,
+   "file": "d06010e1f11e105b.mp3",
+   "key": "time_warning.gloating"
+  },
+  "Ten seconds remaining. Your legacy is already written. It's short.": {
+   "duration": 5.712,
+   "file": "f991c06be63f87f6.mp3",
+   "key": "time_warning.gloating"
+  },
+  "Ten seconds. Just... stop being good for ten seconds.": {
+   "duration": 5.712,
+   "file": "301dca3a70e80e9a.mp3",
+   "key": "time_warning.rattled"
+  },
+  "Ten seconds. Please miss something. Anything.": {
+   "duration": 3.855,
+   "file": "53f3dd67ad745ed1.mp3",
+   "key": "time_warning.rattled"
+  },
+  "Ten seconds. Time enough to fail a few more times.": {
+   "duration": 4.737,
+   "file": "29b6fb6b04b93a6f.mp3",
+   "key": "time_warning.gloating"
+  },
+  "That fruit is now in a better place. Away from you.": {
+   "duration": 3.855,
+   "file": "294cd5b95e4dfd73.mp3",
+   "key": "miss"
+  },
+  "That was a bomb. It said bomb on it. With a fuse.": {
+   "duration": 4.876,
+   "file": "fed2915af4e38da3.mp3",
+   "key": "bomb_hit"
+  },
+  "That's 10 in a row. Who is helping you?": {
+   "duration": 3.297,
+   "file": "723b20184171a681.mp3",
+   "key": "streak_big"
+  },
+  "That's 15 in a row. Who is helping you?": {
+   "duration": 3.529,
+   "file": "650312b2327b3455.mp3",
+   "key": "streak_big"
+  },
+  "That's 20 in a row. Who is helping you?": {
+   "duration": 3.297,
+   "file": "bbc3df4739ab2324.mp3",
+   "key": "streak_big"
+  },
+  "That's 25 in a row. Who is helping you?": {
+   "duration": 2.833,
+   "file": "1eb5d70a0a058525.mp3",
+   "key": "streak_big"
+  },
+  "That's 30 in a row. Who is helping you?": {
+   "duration": 3.158,
+   "file": "2a61cd35a84d803b.mp3",
+   "key": "streak_big"
+  },
+  "That's 5. I am not nervous. I don't have nerves.": {
+   "duration": 4.598,
+   "file": "2f3a147cc8e2237c.mp3",
+   "key": "streak"
+  },
+  "That's time. Your score has been noted. And laughed at.": {
+   "duration": 4.923,
+   "file": "a01b6f1f66127762.mp3",
+   "key": "game_over.timer"
+  },
+  "The fruit was moving at walking pace.": {
+   "duration": 2.647,
+   "file": "519821005e39538e.mp3",
+   "key": "miss"
+  },
+  "There it is. Normal service resumes.": {
+   "duration": 3.39,
+   "file": "ca03a9b7438242fd.mp3",
+   "key": "streak_broken"
+  },
+  "Third pause. Are you playing or meditating?": {
+   "duration": 2.461,
+   "file": "ef800db91e8ecd96.mp3",
+   "key": "pattern.pause_addict"
+  },
+  "Thirty seconds gone. The fruit is winning on points.": {
+   "duration": 4.226,
+   "file": "36722a4facf3b487.mp3",
+   "key": "halfway"
+  },
+  "Three lives, three bombs. Perfect efficiency, wrong direction.": {
+   "duration": 5.805,
+   "file": "8b57da90f731de62.mp3",
+   "key": "game_over.lives"
+  },
+  "Time's up. I've seen better performances from a screensaver.": {
+   "duration": 4.644,
+   "file": "29b6d5c3dc0dc427.mp3",
+   "key": "game_over.timer"
+  },
+  "Two bombs in a row. You're not slicing fruit, you're defusing badly.": {
+   "duration": 6.269,
+   "file": "e4aa46d689160b95.mp3",
+   "key": "pattern.bomb_magnet"
+  },
+  "Two hands? This isn't a hug. Pick one.": {
+   "duration": 3.715,
+   "file": "e625dc67e1bc9053.mp3",
+   "key": "pause.two_hands"
+  },
+  "Was that a swing or a wave?": {
+   "duration": 2.043,
+   "file": "938201e5b633e661.mp3",
+   "key": "miss"
+  },
+  "Welcome back. The fruit missed you. Unlike you, it'll stay missed.": {
+   "duration": 6.827,
+   "file": "3a052be8b50b0765.mp3",
+   "key": "resume"
+  },
+  "Welcome, meat-based competitor. Let's get this over with.": {
+   "duration": 4.133,
+   "file": "9bb8d2fb3a8578cb.mp3",
+   "key": "intro"
+  },
+  "Where did you go? Calling for backup?": {
+   "duration": 2.972,
+   "file": "113a8745ee8224da.mp3",
+   "key": "pause.no_hand"
+  },
+  "You always miss on the left. Is your left arm decorative?": {
+   "duration": 4.319,
+   "file": "b82e58bb3dbb975d.mp3",
+   "key": "pattern.side_bias"
+  },
+  "You always miss on the right. Is your right arm decorative?": {
+   "duration": 4.272,
+   "file": "50af059908936e9b.mp3",
+   "key": "pattern.side_bias"
+  },
+  "You find bombs like a heat-seeking missile. Wrong target though.": {
+   "duration": 4.83,
+   "file": "e398d4c672fdb211.mp3",
+   "key": "pattern.bomb_magnet"
+  },
+  "You hugged the bomb. Bold. Stupid, but bold.": {
+   "duration": 4.969,
+   "file": "5bec10a2df8fb059.mp3",
+   "key": "bomb_hit"
+  },
+  "You pause more than you slice. New personal best.": {
+   "duration": 4.226,
+   "file": "66667280ef62cb26.mp3",
+   "key": "pattern.pause_addict"
+  },
+  "You quit. The bravest thing you've done all game.": {
+   "duration": 4.133,
+   "file": "3a19e9dec3be87e4.mp3",
+   "key": "game_over.quit"
+  },
+  "You're recovering. I didn't authorise that.": {
+   "duration": 3.344,
+   "file": "be6f1d74d31d1c39.mp3",
+   "key": "pattern.comeback"
+  },
+  "Your left side appears to be decorative.": {
+   "duration": 2.508,
+   "file": "2dbab446d0907e57.mp3",
+   "key": "miss"
+  },
+  "Your right side appears to be decorative.": {
+   "duration": 2.508,
+   "file": "a074fa4bb4ed7d57.mp3",
+   "key": "miss"
+  }
+ },
+ "model": "eleven_multilingual_v2",
+ "voice_id": "zYcjlYFOd3taleS0gkk3"
+}

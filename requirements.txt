@@ -1,0 +1,16 @@
+# Python 3.11. Install with ./setup.sh (it also installs requirements-nodeps.txt).
+# OpenCV must be the HEADLESS 4.12 build: OpenCV 5 and the non-headless builds bundle
+# their own SDL, which clashes with pygame's SDL on macOS. No cv2.imshow: draw debug views in pygame.
+pygame-ce==2.5.8
+opencv-python-headless==4.12.0.88
+numpy==2.2.6
+anthropic==2.6.0
+elevenlabs==2.77.0
+python-dotenv==1.2.4
+pytest==9.2.0
+# mediapipe's own dependencies, minus opencv-contrib-python (see requirements-nodeps.txt)
+absl-py==2.5.1
+certifi==2026.10.23
+sounddevice==0.5.6
+flatbuffers==25.12.19
+matplotlib==3.11.2
