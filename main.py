@@ -4,6 +4,7 @@
     python main.py --vision mouse               # mouse sword (vision thread not started)
     python main.py --vision real --game real    # mix real and fake parts freely
     python main.py --rival real --offline       # rival with no API calls
+    python main.py --vision real --game real --rival real --face   # + GRIP-9000 reads your expressions
 
 Entry-point contract for each part (all loops exit when stop_event is set):
     vision.run(stop_event)                  -> daemon thread
@@ -45,7 +46,21 @@ def start_thread(name, target, kwargs):
     return thread
 
 
-def diag_loop(stop_event):
+def face_diag_line():
+    import face
+    fs = shared.get_face_state()
+    d = face.diag
+    levels = ""
+    for name in ("smiling", "laughing", "shock", "frowning", "looking_away"):
+        if name in d.get("levels", {}):
+            levels += " " + name + "=" + str(round(d["levels"][name], 2))
+    return ("[diag]   face: " + str(round(d.get("fps", 0.0), 1)) + " fps, " + str(round(d.get("ms", 0.0), 1))
+            + " ms/frame, faces=" + str(d.get("faces", 0)) + " state=" + str(d.get("state"))
+            + " expression=" + fs.expression + " yaw=" + str(fs.yaw) + " pitch=" + str(fs.pitch)
+            + " | levels (>=0 means on):" + levels)
+
+
+def diag_loop(stop_event, face_on=False):
     """--diag: once a second, print what vision is publishing; save camera snapshots to logs/."""
     root = os.path.dirname(os.path.abspath(__file__))
     log_path = os.path.join(root, "logs", "diag.txt")
@@ -91,6 +106,10 @@ def diag_loop(stop_event):
                     + " conf=" + str(round(hand.confidence, 2)) + " angle=" + str(round(hand.blade_angle, 2)))
             print(line)
             out.write(line + "\n")
+            if face_on:
+                face_line = face_diag_line()
+                print(face_line)
+                out.write(face_line + "\n")
             out.flush()
             frames = 0
             hand_updates = 0
@@ -106,6 +125,7 @@ def main():
     parser.add_argument("--rival", choices=("fake", "real"), default="fake")
     parser.add_argument("--offline", action="store_true", help="rival uses the bank only, no API calls")
     parser.add_argument("--diag", action="store_true", help="print vision health every second; save camera snapshots to logs/")
+    parser.add_argument("--face", action="store_true", help="extension: GRIP-9000 reads your expressions live (docs/FACE_SPEC.md)")
     args = parser.parse_args()
 
     load_dotenv(os.path.join(os.path.dirname(os.path.abspath(__file__)), ".env"))
@@ -122,8 +142,12 @@ def main():
         threads.append(start_thread("vision", vision.run, {"stop_event": shared.stop_event}))
 
     threads.append(start_thread("rival", rival.run, {"stop_event": shared.stop_event, "offline": args.offline}))
+    if args.face:
+        import face
+        print("[main] face: on (expressions only, nothing stored)")
+        threads.append(start_thread("face", face.run, {"stop_event": shared.stop_event}))
     if args.diag:
-        threads.append(start_thread("diag", diag_loop, {"stop_event": shared.stop_event}))
+        threads.append(start_thread("diag", diag_loop, {"stop_event": shared.stop_event, "face_on": args.face}))
 
     try:
         game.run(shared.stop_event, mouse_sword=mouse_sword)
