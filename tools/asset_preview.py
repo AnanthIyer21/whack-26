@@ -112,7 +112,7 @@ def main():
             if e.type == pygame.MOUSEBUTTONDOWN:
                 f = random.choice(S.FRUITS)
                 halves.append([f, t, 760 + random.randint(-40, 40), 300])
-                for name in (random.choice(S.SOUNDS[:3]), "sounds/sfx_splat.ogg"):
+                for name in (random.choice(S.SOUNDS[:3]),):
                     s = dict(sounds).get(name)
                     s and s.play()
 

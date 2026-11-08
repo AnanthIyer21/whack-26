@@ -24,6 +24,7 @@ from ..geometry import circle_hits_quad
 from ..hud import Hud
 from ..rival_ui import RivalDisplay
 from ..scoring import Score
+from .. import sfx
 from ..spawner import Spawner
 from ..storage import load_best, save_best
 from ..ui import Button, fist_ring
@@ -194,7 +195,10 @@ class PlayScene:
         if self.phase == "resuming":
             self.blade.update(s, now)     # katana follows your fist while the ring fills
             self.blade.take_sweeps()      # ...but can't cut until play resumes
+        prev_cd = self.cd
         self.cd += dt
+        if self.phase == "countdown":
+            sfx.countdown(prev_cd, self.cd, self._cd_total())   # 3-2-1 beeps (RBadiadka7)
         if self.cd < self._cd_total():
             return
         # GO!
@@ -222,6 +226,7 @@ class PlayScene:
         self.debris = [d for d in self.debris if d.step(dt)]
 
     def _pause(self, reason):
+        sfx.reset_swing()
         self.phase = "paused"
         self.pause_reason = reason
         self.ev.emit("pause", reason=reason)
@@ -230,6 +235,11 @@ class PlayScene:
 
     def _slice(self, now):
         sweeps = self.blade.take_sweeps()
+        # whoosh on a fast swing; a swing that cuts nothing is a whiff for GRIP-9000 to roast
+        # (sent only once shared/ has ev_whiff, so this is safe before the rival supports it)
+        if sfx.swing_frame(max((sw.speed for sw in sweeps), default=0.0), now) == "whiff":
+            if hasattr(shared, "ev_whiff"):
+                self.ev.emit("whiff")
         if self.blast and not self.blast.boomed:
             return                        # no cutting while the bomb winds up
         # Fruit cut at a lower speed than bombs (so you never blow up from a nudge).

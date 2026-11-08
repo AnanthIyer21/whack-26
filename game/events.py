@@ -6,6 +6,7 @@ event is dropped and counted rather than crashing or stalling the game.
 from collections import deque
 
 import shared
+from . import sfx
 
 
 class Emitter:
@@ -21,6 +22,7 @@ class Emitter:
         except Exception:
             self.dropped += 1
         self.log.append(ev)
+        sfx.on_event(type_)               # sound effects (RBadiadka7)
         return ev
 
     def types(self):
