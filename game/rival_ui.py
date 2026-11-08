@@ -74,7 +74,7 @@ def face(mood, size):
         path = os.path.join(ASSET_DIR, mood + ".png")
         if os.path.exists(path):
             try:
-                img = pygame.transform.smoothscale(pygame.image.load(path).convert_alpha(), (size, size))
+                img = pygame.transform.scale(pygame.image.load(path).convert_alpha(), (size, size))
             except pygame.error:
                 img = None
         _cache[key] = img or _face(mood, size)
