@@ -27,7 +27,7 @@ def _fallback():
     if os.path.exists(path):
         try:
             img = pygame.image.load(path).convert()
-            return pygame.transform.smoothscale(img, (C.W, C.H))
+            return pygame.transform.scale(img, (C.W, C.H))
         except pygame.error:
             pass
     return _gradient()
