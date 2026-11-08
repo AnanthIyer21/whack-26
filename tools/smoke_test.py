@@ -73,7 +73,7 @@ def check_event_builders():
         shared.ev_slice("apple"), shared.ev_miss("left"), shared.ev_combo(3), shared.ev_streak(5),
         shared.ev_streak_broken(5), shared.ev_bomb_hit(), shared.ev_life_lost(2),
         shared.ev_pause("no_hand"), shared.ev_resume(), shared.ev_time_warning(10),
-        shared.ev_game_over(100, 3, 60, "timer"),
+        shared.ev_game_over(100, 3, 60, "timer"), shared.ev_face("smiling", 0.5),
     )
     seen = set()
     for e in built:

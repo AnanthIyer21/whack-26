@@ -24,10 +24,11 @@ PAUSE = "pause"
 RESUME = "resume"
 TIME_WARNING = "time_warning"
 GAME_OVER = "game_over"
+FACE = "face"                       # extension (--face): the player's expression, from the face thread
 
 EVENT_TYPES = (
     GAME_START, SWORD_DRAWN, SWORD_SHEATHED, SLICE, MISS, COMBO, STREAK,
-    STREAK_BROKEN, BOMB_HIT, LIFE_LOST, PAUSE, RESUME, TIME_WARNING, GAME_OVER,
+    STREAK_BROKEN, BOMB_HIT, LIFE_LOST, PAUSE, RESUME, TIME_WARNING, GAME_OVER, FACE,
 )
 
 PAUSE_REASONS = ("no_hand", "two_hands", "not_gripping")
@@ -109,6 +110,16 @@ def ev_game_over(score, best_combo, duration, reason):
     _check(reason, GAME_OVER_REASONS, "reason")
     return _make(GAME_OVER, score=int(score), best_combo=int(best_combo),
                  duration=float(duration), reason=reason)
+
+
+def ev_face(expression, strength):
+    """Face thread only: the player has just held an expression (see shared.face.EXPRESSIONS).
+
+    strength: 0..1, how far above its threshold the expression was.
+    """
+    from shared.face import EXPRESSIONS
+    _check(expression, EXPRESSIONS, "expression")
+    return _make(FACE, expression=expression, strength=round(float(strength), 2))
 
 
 def post_event(event):
