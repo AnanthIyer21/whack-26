@@ -133,15 +133,37 @@ def test_short_flicker_does_not_fire():
     assert fired == [] and fired2 == []
 
 
-def test_interruptions_restart_the_hold():
+def test_brief_covers_pause_the_hold_instead_of_restarting_it():
     tr, t = calibrated_tracker()
     grin = {"smile": 0.9, "jaw": 0.05, "brow": 0.3, "frown": 0.0}
     fired = []
-    for i in range(10):                          # fist crosses the face every 0.3 s
+    for i in range(6):                           # fist crosses the face: 0.3 s readable, 0.2 s covered
         t, f = feed(tr, t, 0.3, grin)
         fired.extend(f)
         tr.interrupt()
-    assert fired == []
+        t = round(t + 0.2, 3)
+    assert names(fired) == ["smiling"]
+
+
+def test_long_cover_restarts_the_hold():
+    tr, t = calibrated_tracker()
+    grin = {"smile": 0.9, "jaw": 0.05, "brow": 0.3, "frown": 0.0}
+    t, fired = feed(tr, t, 0.4, grin)            # 0.4 s of a 0.6 s hold
+    tr.interrupt()
+    t = round(t + 2.0, 3)                        # covered for 2 s
+    t, fired2 = feed(tr, t, 0.4, grin)           # 0.4 s again: not enough on its own
+    assert fired == [] and fired2 == []
+
+
+def test_in_play_smile_hovering_on_the_line_still_fires():
+    """Playtest: in-play smiles hovered just above/below threshold and never held."""
+    tr, t = calibrated_tracker()
+    fired = []
+    for i in range(20):                          # 2 s of a smile flickering around the threshold
+        level = 0.52 if i % 3 else 0.47          # dips just under for one frame in three
+        t, f = feed(tr, t, 0.1, {"smile": level, "jaw": 0.05, "brow": 0.1, "frown": 0.0})
+        fired.extend(f)
+    assert names(fired) == ["smiling"]
 
 
 def test_disabled_expression_never_fires(monkeypatch):
@@ -163,11 +185,11 @@ def test_player_is_the_largest_face_and_ambiguity_means_none():
 def test_fist_over_face():
     box = (0.4, 0.1, 0.6, 0.4)
     over = shared.HandState(sword_visible=True, blade_base=(0.5, 0.3))
-    near = shared.HandState(sword_visible=True, blade_base=(0.62, 0.3))     # inside the +15% margin
+    near = shared.HandState(sword_visible=True, blade_base=(0.62, 0.3))     # just outside: no margin any more
     away = shared.HandState(sword_visible=True, blade_base=(0.9, 0.8))
     hidden = shared.HandState(sword_visible=False, blade_base=(0.5, 0.3))
     assert fist_over_face(box, over)
-    assert fist_over_face(box, near)
+    assert not fist_over_face(box, near)
     assert not fist_over_face(box, away)
     assert not fist_over_face(box, hidden)
 

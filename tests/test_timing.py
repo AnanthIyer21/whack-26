@@ -235,12 +235,30 @@ def test_face_ignored_when_not_in_play():
     assert feed(stats, engine, face(10.5, "looking_away")) is None
 
 
-def test_face_never_interrupts():
+def test_face_never_interrupts_but_waits_for_the_floor():
     stats, engine = setup()
     start(stats, engine)
     miss = feed(stats, engine, ev(shared.ev_miss, 10.0, "left"))
-    engine.line_started(miss, 2.0, 10.0)
-    assert feed(stats, engine, face(10.5, "smiling")) is None
+    engine.line_started(miss, 3.0, 10.0)
+    assert feed(stats, engine, face(10.5, "smiling")) is None        # not cut in...
+    assert engine.tick(12.0) is None                                   # ...still talking
+    engine.line_finished(13.0)
+    d = engine.tick(13.05)                                             # floor free: speaks at once, no gap
+    assert d is not None and d.key == "face" and d.vars["expression"] == "smiling"
+
+
+def test_one_face_reaction_after_game_over():
+    stats, engine = setup()
+    start(stats, engine)
+    roast = feed(stats, engine, ev(shared.ev_game_over, 20.0, 90, 2, 20.0, "timer"))
+    engine.line_started(roast, 6.0, 20.0)
+    assert feed(stats, engine, face(22.0, "laughing")) is None        # waits for the roast
+    assert feed(stats, engine, face(23.0, "smiling")) is None         # only one post-game reaction
+    engine.line_finished(26.0)
+    d = engine.tick(26.05)
+    assert d is not None and d.key == "face" and d.vars["expression"] == "laughing"
+    engine.line_finished(28.0)
+    assert engine.tick(30.0) is None
 
 
 def test_shock_after_bomb_waits_for_the_bomb_line_then_speaks():
@@ -264,11 +282,11 @@ def test_combo_expires_after_waiting_too_long():
     feed(stats, engine, ev(shared.ev_bomb_hit, 10.0))
     feed(stats, engine, ev(shared.ev_life_lost, 10.0, 2))
     bomb = engine.tick(10.2)
-    engine.line_started(bomb, 8.0, 10.2)                             # a very long line
+    engine.line_started(bomb, 12.0, 10.2)                            # a very long line
     feed(stats, engine, face(10.8, "shock"))
-    assert engine.tick(15.0) is None                                 # 4.2 s later: moment passed
-    engine.line_finished(18.2)
-    assert engine.tick(18.3) is None
+    assert engine.tick(19.0) is None                                 # 8.2 s later: moment passed
+    engine.line_finished(22.2)
+    assert engine.tick(22.3) is None
 
 
 def test_smiling_while_winning_is_rattled():

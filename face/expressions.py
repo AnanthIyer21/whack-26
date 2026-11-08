@@ -99,11 +99,12 @@ class ExpressionTracker:
         self.last_levels = {}
         self.last_yaw = 0.0
         self.last_pitch = 0.0
+        self.last_update_t = None
 
     def interrupt(self):
-        """A frame we couldn't read (fist over the face, ambiguous faces): holding must restart."""
-        for name in C.PRIORITY:
-            self.held_since[name] = None
+        """A frame we couldn't read (fist over the face, ambiguous faces): the hold PAUSES.
+
+        If reading resumes within MAX_PAUSE, holds carry on; a longer gap resets them (in update)."""
         self.current = "neutral"
 
     def update(self, t, raw, yaw, pitch):
@@ -111,6 +112,10 @@ class ExpressionTracker:
 
         Returns (current_expression, fired) where fired is (expression, strength) or None.
         """
+        if self.last_update_t is not None and t - self.last_update_t > C.MAX_PAUSE:
+            for name in C.PRIORITY:
+                self.held_since[name] = None     # unreadable for too long: holds start again
+        self.last_update_t = t
         if self.smoothed is None:
             self.smoothed = dict(raw)
             self.smoothed["yaw"] = yaw
@@ -140,6 +145,10 @@ class ExpressionTracker:
             if level >= 0:
                 if self.held_since[name] is None:
                     self.held_since[name] = t
+                if t - self.held_since[name] >= C.HOLD[name]:
+                    held.append(name)
+            elif level >= -C.HOLD_SLACK and self.held_since[name] is not None:
+                # Hovering just under the line: keep the hold going (don't restart it).
                 if t - self.held_since[name] >= C.HOLD[name]:
                     held.append(name)
             else:

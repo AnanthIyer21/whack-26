@@ -40,8 +40,8 @@ RULES = {
     "miss":               (30, 5.0, 0.45, False, "prefetch"),
     "intro":              (20, 0.0, 1.00, False, "bank"),
     # face extension (--face): cooldowns are handled per expression, see FACE_COOLDOWN_*
-    "face":               (33, 0.0, 0.70, False, "bank"),
-    "face_combo":         (45, 0.0, 1.00, True, "claude"),   # face + game context; may wait for the floor
+    "face":               (33, 0.0, 0.85, True, "bank"),     # waits for the floor (see FACE_WAIT), then speaks
+    "face_combo":         (45, 0.0, 1.00, True, "claude"),   # face + game context; waits for the floor too
     "slice":              (10, 12.0, 0.10, False, "bank"),
 }
 
@@ -54,7 +54,9 @@ HUSH_BELOW_PRIORITY = 60    # ...for candidates below this priority
 INTERRUPT_MIN_PRIORITY = 85 # only bomb, last life and game over may cut a line off mid-sentence
 FACE_COOLDOWN_EACH = 25.0   # the same expression is mentioned at most once per 25 s
 FACE_COOLDOWN_ANY = 10.0    # any face line at most once per 10 s
-COMBO_WAIT = 4.0            # a face combo may wait this long for the current line to end (the only thing that waits)
+COMBO_WAIT = 8.0            # a face combo may wait this long for the current line to end
+FACE_WAIT = 6.0             # a plain face reaction may wait this long (playtest: GRIP-9000 is almost never quiet)
+POST_GAME_WAIT = 12.0       # one face reaction after game over may wait for the roast to finish
 STREAK_MILESTONES = (5, 10, 15, 20, 25, 30)
 BIG_STREAK = 10
 MIN_COMBO = 4
@@ -102,7 +104,8 @@ class TimingEngine:
         self.pending_pause_at = None
         self.pause_line_spoken = False
         self.pause_long_done = False
-        self.pending_combo = None       # {"vars", "deadline"}: a face combo waiting for the floor
+        self.pending_combo = None       # {"key", "vars", "deadline", "post_game"}: a face line waiting for the floor
+        self.post_game_face_done = False
 
     # ------------------------------------------------------------------ events
 
@@ -114,6 +117,13 @@ class TimingEngine:
             self.reset_run()
             return self._consider("intro", {}, now)
         if self.over:
+            if kind == shared.FACE and not self.post_game_face_done and self.pending_combo is None:
+                # One reaction to the player's face after the roast (e.g. laughing at their own score).
+                self.post_game_face_done = True
+                self.pending_combo = {"key": "face", "vars": {"expression": event["expression"]},
+                                      "deadline": now + POST_GAME_WAIT, "post_game": True}
+                self.log(now, "face(" + event["expression"] + ") after game over: waits for the roast to end")
+                return None
             self.log(now, "drop " + kind + ": run is over")
             return None
         if kind == shared.FACE:
@@ -183,21 +193,21 @@ class TimingEngine:
         When a pattern Decision is returned, the caller must call
         detector.mark_spoken(decision.vars["pattern"]); unspoken patterns are offered again.
         """
-        if self.over:
-            self.pending_combo = None
-            return None
-
         if self.pending_combo is not None:
-            if now > self.pending_combo["deadline"] or self.stats.paused or not self.stats.running:
-                self.log(now, "drop face_combo: waited " + str(COMBO_WAIT) + " s, moment passed")
+            waiting = self.pending_combo
+            in_play = self.stats.running and not self.stats.paused and not self.over
+            if now > waiting["deadline"] or not (in_play or waiting["post_game"]):
+                self.log(now, "drop " + waiting["key"] + ": waited too long, moment passed")
                 self.pending_combo = None
             elif not self.is_speaking(now):
-                vars_ = self.pending_combo["vars"]
                 self.pending_combo = None
-                decision = self._consider("face_combo", vars_, now)
+                decision = self._consider(waiting["key"], waiting["vars"], now)
                 if decision is not None:
-                    self._face_spoken(vars_["expression"], now)
+                    self._face_spoken(waiting["vars"]["expression"], now)
                     return decision
+
+        if self.over:
+            return None
 
         if self.pending_bomb_at is not None and now >= self.pending_bomb_at:
             self.pending_bomb_at = None
@@ -277,14 +287,15 @@ class TimingEngine:
 
         context = self._face_context(expression, now)
         if context is not None:
-            vars_ = {"expression": expression, "context": context}
-            if self.is_speaking(now):
-                self.pending_combo = {"vars": vars_, "deadline": now + COMBO_WAIT}
-                self.log(now, "face combo (" + expression + ") waits up to " + str(COMBO_WAIT) + " s for the floor")
-                return None
-            decision = self._consider("face_combo", vars_, now)
+            key, vars_, wait = "face_combo", {"expression": expression, "context": context}, COMBO_WAIT
         else:
-            decision = self._consider("face", {"expression": expression}, now)
+            key, vars_, wait = "face", {"expression": expression}, FACE_WAIT
+        if self.is_speaking(now):
+            if self.pending_combo is None or key == "face_combo":
+                self.pending_combo = {"key": key, "vars": vars_, "deadline": now + wait, "post_game": False}
+                self.log(now, key + " (" + expression + ") waits up to " + str(wait) + " s for the floor")
+            return None
+        decision = self._consider(key, vars_, now)
         if decision is not None:
             self._face_spoken(expression, now)
         return decision
