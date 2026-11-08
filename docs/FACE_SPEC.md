@@ -24,7 +24,7 @@ Pitch wording: "GRIP-9000 reads your expressions live." Never "facial recognitio
 
 | Expression | Fires when (smoothed blendshapes) | Hold |
 |---|---|---|
-| laughing | smile >= 0.40 and jawOpen >= 0.30 | 0.5 s |
+| laughing | smile >= 0.40 (and >= baseline + 0.15) and jawOpen >= 0.30 (and >= baseline + 0.20) | 0.5 s |
 | smiling | smile >= 0.45 and >= baseline + 0.25 | 0.6 s |
 | shock | jawOpen >= 0.45 and >= baseline + 0.25, smile < 0.30 | 0.4 s |
 | frowning | (browDown >= 0.40 and >= baseline + 0.20) or mouthFrown >= 0.35; smile < 0.20 | 0.7 s |
