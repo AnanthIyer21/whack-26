@@ -44,3 +44,51 @@ def test_bomb_blast_clears_screen_without_misses():
     assert sc.objects == [] and sc.halves == []
     assert len(sc.debris) == 5
     assert "miss" not in app.events.types()
+
+
+def _scene_with(objs):
+    import queue
+    from game.link import resolve
+    from game.app import App
+    from game.scenes.play import PlayScene
+    app = App(resolve(post_event=lambda e: None, rival_lines=queue.Queue()))
+    sc = PlayScene(app)
+    sc.phase, sc.started = "playing", True
+    sc.objects = objs
+    return sc
+
+
+def _sweep(speed, lag):
+    from game.blade import Sweep
+    # a horizontal slash along y = 300 from x = 200 to 900
+    return Sweep([(200, 300), (200, 299), (900, 299), (900, 300)], speed, (1.0, 0.0), -math.pi / 2, lag)
+
+
+def test_lag_sweep_gives_fruit_room_for_error():
+    from game import config as Cfg
+    k = KINDS[2]                                   # orange, radius 40
+    off = k.radius + 30                            # 30 px beyond touching the slash
+    for lag, expect in ((False, False), (True, True)):
+        sc = _scene_with([Fruit(k, (500, 300 + off), (0, 0), 0, 0)])
+        sc.blade._pending = [_sweep(Cfg.CUT_SPEED * 1.5, lag)]
+        sc._slice(0.0)
+        assert (sc.objects == []) == expect, lag
+
+
+def test_lag_sweep_lower_speed_bar():
+    from game import config as Cfg
+    for lag, expect in ((False, False), (True, True)):
+        sc = _scene_with([Fruit(KINDS[2], (500, 300), (0, 0), 0, 0)])
+        sc.blade._pending = [_sweep(Cfg.CUT_SPEED * 0.75, lag)]
+        sc._slice(0.0)
+        assert (sc.objects == []) == expect, lag
+
+
+def test_lag_sweep_is_kinder_with_bombs():
+    from game import config as Cfg
+    near = Bomb((500, 300), (0, 0), 0, 0).hit_radius * 0.85   # grazing distance
+    for lag, expect_hit in ((False, True), (True, False)):
+        sc = _scene_with([Bomb((500, 300 + near), (0, 0), 0, 0)])
+        sc.blade._pending = [_sweep(Cfg.CUT_SPEED * 1.5, lag)]
+        sc._slice(0.0)
+        assert (sc.blast is not None) == expect_hit, lag

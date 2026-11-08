@@ -120,6 +120,8 @@ class App:
                     self.debug = not self.debug
                 elif ev.type == pygame.KEYDOWN and ev.key == pygame.K_TAB:
                     self.input_name = "hand" if self.input_name == "mouse" else "mouse"
+                    if hasattr(self.input, "reset"):
+                        self.input.reset()
                     self.scene.on_input_switched()
                 else:
                     self.input.handle_event(ev)
