@@ -4,6 +4,7 @@ Hooked in at three places, nothing else needs to know about it:
   - game/events.py   Emitter.emit -> sfx.on_event(type_)   (slice, bomb_hit, combo, ...)
   - game/app.py      every frame  -> sfx.update(app)       (music per scene, ducking, Sound On/Off)
   - game/scenes/play.py countdown -> sfx.countdown(prev, cd, total)   (3-2-1 beeps)
+  - game/scenes/play.py _slice     -> sfx.swing_frame(top_speed, now)  (whoosh; returns "whiff")
 
 Rules: never touches channel 0 (GRIP-9000's voice, reserved by app.py); everything is
 multiplied by shared.DUCK_LEVEL while shared.rival_speaking is set; any missing file,
@@ -24,7 +25,15 @@ except ImportError:
 ASSETS = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "assets", "sounds")
 
 SFX_VOLUME = 0.7
-MUSIC_VOLUME = 0.35
+MUSIC_VOLUME = 0.22      # background music sits well under the effects and GRIP-9000
+EXPLOSION_VOLUME = 1.0   # the bomb is never ducked: it must be heard over the rival's laugh
+
+# Swings: a "swing" is a burst of fast blade motion. Whoosh when one starts; if it ends
+# without cutting anything it's a whiff (the rival can roast it).
+WHOOSH_SPEED = 0.9       # screen heights / s (fruit cut at 0.7, bombs at 1.2)
+SWING_END_GAP = 0.18     # this long without fast motion ends the swing
+WHOOSH_MIN_GAP = 0.3     # at most one whoosh per 0.3 s
+WHIFF_MIN_LEN = 0.08     # swings shorter than this are jitter, not a real whiff
 MUSIC_FADE_MS = 600
 STING_GAP = 1.2          # seconds of quiet after game over so the sting (and the roast) land
 
@@ -39,7 +48,8 @@ EVENT_SOUNDS = {
     "resume": ["sfx_countdown_go"],
     "game_over": ["sfx_game_over"],
 }
-LAYERS = {"slice": ["sfx_splat"]}
+LAYERS = {}             # extra sounds layered on an event, e.g. {"slice": ["sfx_splat"]} (splat dropped)
+WHOOSHES = ["sfx_whoosh_1", "sfx_whoosh_2"]
 MUSIC = {"play": "music_game.ogg", "menu": "music_menu.ogg"}
 
 _sounds = {}
@@ -49,6 +59,8 @@ _duck = 1.0
 _music_now = None        # which track is playing: "play" / "menu" / None
 _quiet_until = 0.0       # no music before this time (after game over)
 _scheduled = []          # [(time, sound name)] for sounds that must wait (the explosion)
+_swing = None            # {"start", "last_fast", "hit"} while a swing is in progress
+_last_whoosh = -9.0
 
 
 def _now():
@@ -67,8 +79,10 @@ def _load():
     if _loaded or not _ready():
         return
     _loaded = True
-    names = {n for v in EVENT_SOUNDS.values() for n in v} | {n for v in LAYERS.values() for n in v}
-    names |= {"sfx_countdown_beep"}
+    try:                                      # every sfx_*.ogg, so nothing can be forgotten
+        names = [f[:-4] for f in os.listdir(ASSETS) if f.startswith("sfx_") and f.endswith(".ogg")]
+    except OSError:
+        names = []
     for n in names:
         try:
             _sounds[n] = pygame.mixer.Sound(os.path.join(ASSETS, n + ".ogg"))
@@ -76,7 +90,7 @@ def _load():
             pass                              # missing file: that sound is silent
 
 
-def play(name):
+def play(name, volume=None, duck=True):
     """Play one sound on any free channel except the rival's."""
     if not _enabled:
         return
@@ -85,7 +99,7 @@ def play(name):
     if snd is None:
         return
     try:
-        snd.set_volume(SFX_VOLUME * _duck)
+        snd.set_volume((SFX_VOLUME if volume is None else volume) * (_duck if duck else 1.0))
         _pick_channel().play(snd)
     except pygame.error:
         pass
@@ -118,11 +132,41 @@ def on_event(type_):
         play(random.choice(names))
     for n in LAYERS.get(type_, ()):
         play(n)
+    if type_ in ("slice", "bomb_hit") and _swing is not None:
+        _swing["hit"] = True
     if type_ == "bomb_hit":
         _scheduled.append((_now() + BOMB_DELAY, "sfx_explosion"))
     if type_ == "game_over":
         _quiet_until = _now() + STING_GAP
         _set_music(None)
+
+
+def swing_frame(top_speed, now):
+    """Once per playing frame with the fastest blade sweep this frame (screen heights / s).
+
+    Plays a whoosh when a fast swing starts. Returns "whiff" on the frame a swing ends
+    without having cut a fruit or hit a bomb, else None.
+    """
+    global _swing, _last_whoosh
+    if top_speed >= WHOOSH_SPEED:
+        if _swing is None:
+            _swing = {"start": now, "last_fast": now, "hit": False}
+            if now - _last_whoosh >= WHOOSH_MIN_GAP:
+                _last_whoosh = now
+                play(random.choice(WHOOSHES))
+        _swing["last_fast"] = now
+        return None
+    if _swing is not None and now - _swing["last_fast"] > SWING_END_GAP:
+        s, _swing = _swing, None
+        if not s["hit"] and s["last_fast"] - s["start"] >= WHIFF_MIN_LEN:
+            return "whiff"
+    return None
+
+
+def reset_swing():
+    """Pause/countdown: forget any swing in progress (no whiff for it)."""
+    global _swing
+    _swing = None
 
 
 def countdown(prev, cd, total):
@@ -170,7 +214,7 @@ def update(app):
         pass
     for item in [s for s in _scheduled if s[0] <= _now()]:
         _scheduled.remove(item)
-        play(item[1])
+        play(item[1], volume=EXPLOSION_VOLUME, duck=False)
     if _now() < _quiet_until:
         return
     playing = type(app.scene).__name__ == "PlayScene" and not getattr(app.scene, "ended", False)

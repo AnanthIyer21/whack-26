@@ -8,10 +8,16 @@ All images (fruit, halves, splats, bomb, explosion, sword, glow, lives, the pine
 | File | Source | Author | Licence | URL |
 |---|---|---|---|---|
 | `sounds/sfx_slice_1.ogg` | Swishes Sound Pack: `swish-3.wav` | artisticdude | CC0 | https://opengameart.org/content/swishes-sound-pack |
+| `sounds/sfx_slice_1.ogg` | 80 CC0 RPG SFX: `blade_02.ogg` | rubberduck | CC0 | https://opengameart.org/content/80-cc0-rpg-sfx |
 | `sounds/sfx_slice_2.ogg` | Swishes Sound Pack: `swish-7.wav` | artisticdude | CC0 | https://opengameart.org/content/swishes-sound-pack |
+| `sounds/sfx_slice_2.ogg` | 80 CC0 RPG SFX: `blade_03.ogg` | rubberduck | CC0 | https://opengameart.org/content/80-cc0-rpg-sfx |
 | `sounds/sfx_slice_3.ogg` | Swishes Sound Pack: `swish-9.wav` | artisticdude | CC0 | https://opengameart.org/content/swishes-sound-pack |
+| `sounds/sfx_slice_3.ogg` | 512 Sound Effects (8-bit style): `sfx_wpn_sword2.wav` | Juhani Junkala (SubspaceAudio) | CC0 | https://opengameart.org/content/512-sound-effects-8-bit-style |
+| `sounds/sfx_slice_3.ogg` | 80 CC0 RPG SFX: `blade_02.ogg` | rubberduck | CC0 | https://opengameart.org/content/80-cc0-rpg-sfx |
+| `sounds/sfx_whoosh_1.ogg` | Swishes Sound Pack: `swish-1.wav` | artisticdude | CC0 | https://opengameart.org/content/swishes-sound-pack |
+| `sounds/sfx_whoosh_2.ogg` | Swishes Sound Pack: `swish-5.wav` | artisticdude | CC0 | https://opengameart.org/content/swishes-sound-pack |
 | `sounds/sfx_splat.ogg` | 80 CC0 RPG SFX: `creature_slime_03.ogg` | rubberduck | CC0 | https://opengameart.org/content/80-cc0-rpg-sfx |
-| `sounds/sfx_explosion.ogg` | 512 Sound Effects (8-bit style): `sfx_exp_medium3.wav` | Juhani Junkala (SubspaceAudio) | CC0 | https://opengameart.org/content/512-sound-effects-8-bit-style |
+| `sounds/sfx_explosion.ogg` | 512 Sound Effects (8-bit style): `sfx_exp_long4.wav` | Juhani Junkala (SubspaceAudio) | CC0 | https://opengameart.org/content/512-sound-effects-8-bit-style |
 | `sounds/sfx_countdown_beep.ogg` | 50 CC0 retro / synth SFX: `synth_beep_01.ogg` | rubberduck | CC0 | https://opengameart.org/content/50-cc0-retro-synth-sfx |
 | `sounds/sfx_countdown_go.ogg` | 50 CC0 retro / synth SFX: `power_up_01.ogg` | rubberduck | CC0 | https://opengameart.org/content/50-cc0-retro-synth-sfx |
 | `sounds/sfx_sword_draw.ogg` | 80 CC0 RPG SFX: `blade_01.ogg` | rubberduck | CC0 | https://opengameart.org/content/80-cc0-rpg-sfx |

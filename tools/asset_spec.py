@@ -41,6 +41,7 @@ M2_IMAGES = {p for p in IMAGES if p.startswith(("splat_", "explosion_", "life_")
 
 SOUNDS = [
     "sounds/sfx_slice_1.ogg", "sounds/sfx_slice_2.ogg", "sounds/sfx_slice_3.ogg",
+    "sounds/sfx_whoosh_1.ogg", "sounds/sfx_whoosh_2.ogg",
     "sounds/sfx_splat.ogg", "sounds/sfx_explosion.ogg",
     "sounds/sfx_countdown_beep.ogg", "sounds/sfx_countdown_go.ogg",
     "sounds/sfx_sword_draw.ogg", "sounds/sfx_sword_sheathe.ogg",

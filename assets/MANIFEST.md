@@ -31,9 +31,10 @@ The machine-readable version is `tools/asset_spec.py`; `python tools/check_asset
 ## Sounds (`assets/sounds/`, all `.ogg`)
 | Event | File |
 |---|---|
-| fruit cut | `sfx_slice_1.ogg`, `sfx_slice_2.ogg`, `sfx_slice_3.ogg` (pick one at random) |
-| fruit cut (layered) | `sfx_splat.ogg` |
-| bomb hit | `sfx_explosion.ogg` |
+| fruit cut | `sfx_slice_1.ogg`, `sfx_slice_2.ogg`, `sfx_slice_3.ogg`: metallic movie-style slash (pick one at random) |
+| fast swing starts | `sfx_whoosh_1.ogg`, `sfx_whoosh_2.ogg` |
+| (unused for now) | `sfx_splat.ogg`: dropped from slices, kept in case we want it back |
+| bomb hit | `sfx_explosion.ogg`: on the visual boom (after `boom.WINDUP`), full volume, never ducked |
 | 3, 2, 1 | `sfx_countdown_beep.ogg` |
 | GO | `sfx_countdown_go.ogg` |
 | `sword_drawn` | `sfx_sword_draw.ogg` |
@@ -43,7 +44,7 @@ The machine-readable version is `tools/asset_spec.py`; `python tools/check_asset
 | title / settings / game over | `music_menu.ogg` (loop) *(M2)* |
 | during play | `music_game.ogg` (loop) *(M2)* |
 
-**Volume:** the rival's voice must stay audible. Suggested mixer volumes are music 0.35, ducked to 0.15 while a rival line plays, and SFX 0.7.
+**Volume:** the rival's voice must stay audible. Implemented in `game/sfx.py`: music 0.22, SFX 0.7, explosion 1.0; everything except the explosion is multiplied by `shared.DUCK_LEVEL` while `shared.rival_speaking` is set.
 
 ## Credits
 Every file's source and licence is listed in `assets/CREDITS.md`.
