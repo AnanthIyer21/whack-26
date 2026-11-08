@@ -115,6 +115,47 @@ def make_run(name, seed):
     return out
 
 
+def add_faces(timeline, seed):
+    """Face extension: a believably expressive player (more face events than GRIP-9000 should ever voice)."""
+    rng = random.Random(seed + 1000)
+    out = list(timeline)
+    misses = []
+    in_play = False
+    paused = False
+    last_random = 0.0
+    for t, event in timeline:
+        kind = event["type"]
+        if kind == shared.GAME_START:
+            in_play = True
+        elif kind == shared.GAME_OVER:
+            in_play = False
+        elif kind == shared.PAUSE:
+            paused = True
+        elif kind == shared.RESUME:
+            paused = False
+        if not in_play or paused:
+            continue
+        if kind == shared.BOMB_HIT:
+            roll = rng.random()
+            if roll < 0.6:
+                out.append((t + rng.uniform(0.5, 1.0), shared.ev_face("shock", 0.8)))
+            elif roll < 0.9:
+                out.append((t + rng.uniform(0.8, 1.6), shared.ev_face("laughing", 0.7)))
+        if kind == shared.MISS:
+            misses.append(t)
+            recent = 0
+            for m in misses:
+                if t - m <= 15.0:
+                    recent += 1
+            if recent >= 3 and rng.random() < 0.5:
+                out.append((t + rng.uniform(0.5, 1.2), shared.ev_face("frowning", 0.6)))
+        if t - last_random > rng.uniform(5.0, 9.0):
+            last_random = t
+            out.append((t + 0.3, shared.ev_face(rng.choice(("smiling", "looking_away", "smiling", "frowning")), 0.6)))
+    out.sort(key=lambda item: item[0])
+    return out
+
+
 def load_recording(path):
     out = []
     with open(path) as f:
@@ -207,11 +248,20 @@ def simulate(timeline, seed, quiet):
             key = word + " - " + detail
             drops[key] = drops.get(key, 0) + 1
     claude = 0
+    face_lines = 0
+    face_events = 0
     for t, d in said:
         if d.source == "claude":
             claude += 1
+        if d.key in ("face", "face_combo"):
+            face_lines += 1
+    for t, event in timeline:
+        if event["type"] == shared.FACE:
+            face_events += 1
     print("")
     print("  lines spoken: " + str(len(said)) + "  (live Claude: " + str(claude) + ")")
+    if face_events:
+        print("  face: " + str(face_events) + " expressions detected -> " + str(face_lines) + " face lines spoken")
     if gaps:
         print("  longest silence: " + str(round(max(gaps), 1)) + " s,  average gap: "
               + str(round(sum(gaps) / len(gaps), 1)) + " s")
@@ -226,6 +276,7 @@ def main():
     parser.add_argument("--seed", type=int, default=1)
     parser.add_argument("--quiet", action="store_true", help="summary only")
     parser.add_argument("--file", help="replay a recorded JSONL event log instead")
+    parser.add_argument("--face", action="store_true", help="add face-extension events (an expressive player)")
     args = parser.parse_args()
 
     if args.file:
@@ -236,7 +287,10 @@ def main():
     for name in names:
         print("")
         print("=== scenario: " + name + "  (seed " + str(args.seed) + ")")
-        simulate(make_run(name, args.seed), args.seed, args.quiet)
+        timeline = make_run(name, args.seed)
+        if args.face:
+            timeline = add_faces(timeline, args.seed)
+        simulate(timeline, args.seed, args.quiet)
 
 
 if __name__ == "__main__":
