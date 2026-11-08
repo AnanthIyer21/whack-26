@@ -62,6 +62,9 @@ MOMENTS = {
     "miss": "a fruit just fell off the bottom of the screen uncut",
     "halfway": "halfway through the run; give a state-of-the-match comment",
     "pattern": "you have noticed a habit in how they play; call it out",
+    "whiff": "the player just swung hard at thin air and cut nothing",
+    "party_over": ("a group of friends just finished a round each; details has the standings. Name the winner "
+                   "grudgingly and roast whoever came last by name"),
 }
 
 
@@ -120,6 +123,7 @@ class Rival:
         self.latency = LatencyLog()
         self.best_score = read_json(BEST_JSON, {}).get("best_score", 0)
         self.session = read_json(SESSION_JSON, {"runs": []}).get("runs", [])
+        self.player = None                 # party mode: who is playing this run
         self.speaking_until = 0.0
         self.speaking = False
 
@@ -161,6 +165,8 @@ class Rival:
             self.pending = None
             if self.health is not None:
                 self.health.reset_for_new_run()
+        if event["type"] == shared.GAME_START:
+            self.player = event.get("player")              # party mode name, or None
         if event["type"] == shared.GAME_OVER:
             event = dict(event)
             self.previous_best = self.best_score
@@ -353,6 +359,8 @@ class Rival:
         extra = {}
         for key in decision.vars:
             extra[key] = decision.vars[key]
+        if getattr(self, "player", None) and decision.key != "party_over":
+            extra["player_name"] = self.player            # party mode: live lines may use their name
         previous = self._previous_run()
         if decision.key == "game_over":
             extra["previous_best"] = getattr(self, "previous_best", 0)

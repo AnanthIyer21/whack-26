@@ -212,5 +212,21 @@
     "New best score. Fine. I wasn't even trying. I was running at four percent.",
     "A new record. I demand a recount.",
     "Highest score yet. I'm reporting this to my developers."
+  ],
+  "whiff": [
+    "You might need to get your eyes tested at SpecSavers, mate.",
+    "That swing hit nothing. Absolutely nothing. Impressive, in a way.",
+    "Lovely swing. Shame about the aim.",
+    "You just sliced the air. The air is fine, by the way.",
+    "Should've gone to SpecSavers.",
+    "Swinging at ghosts now, are we?",
+    "Big swing. Zero fruit. Peak performance.",
+    "The fruit is over there. No, the other there."
+  ],
+  "party_over": [
+    "The results are in. Most of you should be ashamed. One of you slightly less.",
+    "A winner has been crowned. The bar was on the floor, but still.",
+    "Congratulations to the winner. Condolences to everyone else. Especially last place.",
+    "That was a group effort. Mostly an effort to disappoint me."
   ]
 }

@@ -207,3 +207,36 @@ def test_persona_filter():
     assert filter_line("You missed. Hell of a swing.") is None          # mild swearing rejected
     assert filter_line("*sighs* Missed again.") == "Missed again."       # stage directions stripped
     assert filter_line('"Quoted line here, please."') == "Quoted line here, please."
+
+
+# ---- whiff + party mode (RBadiadka7)
+
+def test_whiff_gets_a_bank_heckle_with_cooldown():
+    stats, engine = setup()
+    start(stats, engine)
+    d = feed(stats, engine, ev(shared.ev_whiff, 20.0))
+    assert d is not None and d.key == "whiff" and d.source == "bank" and d.mood == "gloating"
+    engine.line_finished(21.0)
+    assert feed(stats, engine, ev(shared.ev_whiff, 25.0)) is None      # 8 s cooldown
+
+
+def test_party_over_after_game_over_is_final_and_interrupts_the_roast():
+    stats, engine = setup()
+    start(stats, engine)
+    over = feed(stats, engine, ev(shared.ev_game_over, 60.0, 300, 4, 60, "timer"))
+    assert over.final
+    standings = [{"name": "Di", "score": 340}, {"name": "Fred", "score": 120}]
+    d = feed(stats, engine, ev(shared.ev_party_over, 61.0, standings))   # roast still playing
+    assert d is not None and d.final and d.interrupt and d.source == "claude"
+    assert d.vars["winner"] == "Di" and d.vars["last_place"] == "Fred"
+
+
+def test_game_start_player_is_optional():
+    assert "player" not in shared.ev_game_start(60, 3)
+    assert shared.ev_game_start(60, 3, player="Di")["player"] == "Di"
+
+
+def test_new_events_have_bank_lines():
+    from agent.lines import Bank
+    bank = Bank()
+    assert bank.pick("whiff", {}) and bank.pick("party_over", {"standings": [], "winner": "A", "last_place": "B"})
