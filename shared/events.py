@@ -25,10 +25,13 @@ RESUME = "resume"
 TIME_WARNING = "time_warning"
 GAME_OVER = "game_over"
 FACE = "face"                       # extension (--face): the player's expression, from the face thread
+WHIFF = "whiff"                # a fast swing that cut nothing (RBadiadka7)
+PARTY_OVER = "party_over"      # party mode: everyone has played, standings are in (RBadiadka7)
 
 EVENT_TYPES = (
     GAME_START, SWORD_DRAWN, SWORD_SHEATHED, SLICE, MISS, COMBO, STREAK,
     STREAK_BROKEN, BOMB_HIT, LIFE_LOST, PAUSE, RESUME, TIME_WARNING, GAME_OVER, FACE,
+    WHIFF, PARTY_OVER,
 )
 
 PAUSE_REASONS = ("no_hand", "two_hands", "not_gripping")
@@ -48,9 +51,12 @@ def _check(value, allowed, name):
         raise ValueError(name + " must be one of " + str(allowed) + ", got " + repr(value))
 
 
-def ev_game_start(duration, lives):
-    """duration: run length in seconds (from settings); lives: starting lives."""
-    return _make(GAME_START, duration=float(duration), lives=int(lives))
+def ev_game_start(duration, lives, player=None):
+    """duration: run length in seconds (from settings); lives: starting lives.
+    player: optional name of who is playing (party mode); the field is left out when None."""
+    if player is None:
+        return _make(GAME_START, duration=float(duration), lives=int(lives))
+    return _make(GAME_START, duration=float(duration), lives=int(lives), player=str(player))
 
 
 def ev_sword_drawn():
@@ -120,6 +126,16 @@ def ev_face(expression, strength):
     from shared.face import EXPRESSIONS
     _check(expression, EXPRESSIONS, "expression")
     return _make(FACE, expression=expression, strength=round(float(strength), 2))
+
+
+def ev_whiff():
+    """A fast swing ended without cutting anything."""
+    return _make(WHIFF)
+
+
+def ev_party_over(standings):
+    """standings: [{"name": str, "score": int}, ...], best first."""
+    return _make(PARTY_OVER, standings=[{"name": str(s["name"]), "score": int(s["score"])} for s in standings])
 
 
 def post_event(event):

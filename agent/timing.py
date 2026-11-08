@@ -24,6 +24,7 @@ import shared
 #           "prefetch" - pre-written Claude line if a fresh one is ready, else bank
 #           "claude"   - live Claude line (1.8 s timeout, then bank)
 RULES = {
+    "party_over":         (101, 0.0, 1.00, True, "claude"),   # names the winner, roasts last place
     "game_over":          (100, 0.0, 1.00, True, "claude"),
     "bomb_hit":           (90, 4.0, 1.00, True, "prefetch"),
     "last_life":          (85, 0.0, 1.00, True, "claude"),
@@ -37,6 +38,7 @@ RULES = {
     "resume":             (40, 10.0, 0.50, False, "bank"),
     "halfway":            (36, 0.0, 1.00, False, "claude"),
     "pattern":            (35, 20.0, 1.00, False, "claude"),
+    "whiff":              (32, 8.0, 0.50, False, "bank"),     # swung at nothing (SpecSavers)
     "miss":               (30, 5.0, 0.45, False, "prefetch"),
     "intro":              (20, 0.0, 1.00, False, "bank"),
     # face extension (--face): cooldowns are handled per expression, see FACE_COOLDOWN_*
@@ -116,6 +118,11 @@ class TimingEngine:
         if kind == shared.GAME_START:
             self.reset_run()
             return self._consider("intro", {}, now)
+        if kind == shared.PARTY_OVER:
+            st = event["standings"]
+            return self._consider("party_over", {
+                "standings": st, "winner": st[0]["name"], "last_place": st[-1]["name"],
+            }, now)
         if self.over:
             if kind == shared.FACE and not self.post_game_face_done and self.pending_combo is None:
                 # One reaction to the player's face after the roast (e.g. laughing at their own score).
@@ -182,6 +189,8 @@ class TimingEngine:
             return self._consider("miss", {"side": event["side"], "n": self.stats.misses[event["side"]]}, now)
         if kind == shared.SLICE:
             return self._consider("slice", {"fruit": event["fruit"]}, now)
+        if kind == shared.WHIFF:
+            return self._consider("whiff", {}, now)
         return None
 
     # -------------------------------------------------------------------- tick
@@ -364,7 +373,7 @@ class TimingEngine:
         self.speaking_priority = priority
         self.speaking_until = now + PROVISIONAL_LINE_SECONDS
         self.quiet_until = self.speaking_until + GLOBAL_GAP
-        return Decision(key, priority, self._mood(key, vars_), source, vars_, interrupt, key == "game_over", now)
+        return Decision(key, priority, self._mood(key, vars_), source, vars_, interrupt, key in ("game_over", "party_over"), now)
 
     def _mood(self, key, vars_):
         if key in ("face", "face_combo"):
@@ -378,7 +387,7 @@ class TimingEngine:
             return "rattled"
         if key == "pattern" and vars_.get("pattern") == "comeback":
             return "rattled"
-        if key in ("miss", "bomb_hit", "last_life", "streak_broken", "pattern"):
+        if key in ("miss", "whiff", "bomb_hit", "last_life", "streak_broken", "pattern", "party_over"):
             return "gloating"
         if key == "game_over":
             if vars_.get("new_best"):

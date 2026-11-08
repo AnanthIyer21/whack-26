@@ -204,7 +204,9 @@ class PlayScene:
         # GO!
         if not self.started:
             self.started = True
-            self.ev.emit("game_start", duration=self.run_len, lives=self.score.lives)
+            party = self.app.party
+            self.ev.emit("game_start", duration=self.run_len, lives=self.score.lives,
+                         player=party.current if party is not None else None)
         else:
             self.ev.emit("resume")
         resumed = self.phase == "resuming"
