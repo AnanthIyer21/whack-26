@@ -28,6 +28,8 @@ python main.py --vision mouse                   # mouse sword: hold the left but
 python main.py --vision real --game real --rival real
 python main.py --rival real --offline           # rival with no API calls
 python main.py --vision real --game real --rival real --diag   # prints vision health each second
+python main.py --vision real --game real --rival real --face   # extension: GRIP-9000 reads your expressions live
+python tools/face_debug.py                      # face extension: live expression levels as text (no window)
 python tools/smoke_test.py                      # automated checks (run after every merge)
 ```
 
