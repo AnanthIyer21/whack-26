@@ -20,14 +20,13 @@
 | 0:45 to 1:00 | Bomb hit → explosion → GRIP-9000 cackles | Laugh + roast |
 | 1:00 to 1:12 | Phone shot: hand opens → screen freezes (pause screen); fist → 3-2-1 | Text: "Open hand = instant pause." GRIP-9000 mocks the pause |
 | 1:12 to 1:25 | Game over screen with the final roast (live Claude) | Roast audio |
-| 1:25 to 1:40 | `results/numbers_slide.png` (zoom in slowly) | Voiceover: "MediaPipe landmarks plus our own grip maths, nothing trained. [[NN]] ms camera to game, [[NN]]% grips recognised, quick lines in [[N]] ms." |
+| 1:25 to 1:40 | Party leaderboard: GRIP-9000 crowns the winner and roasts last place by name | His roast, no voiceover |
 | 1:40 to 1:45 | Logo/title + team names + repo | Text: "GRIP-9000 · The Flairy Fairies · WHACK 26" |
 
 ## iMovie steps
-1. New Project → Movie → import the QuickTime + phone clips and the slide PNG.
+1. New Project → Movie → import the QuickTime + phone clips.
 2. Drag clips to the timeline in shot order; trim with `Cmd+B` (split) and delete.
 3. Titles (`T` button) for the on-screen text; keep them short and lower-third.
-4. Voiceover: Window → Record Voiceover over the numbers slide only.
 5. Lower background music where GRIP-9000 talks (clip volume), never cover his lines.
 6. File → Share → File → 1080p → save to Desktop as `grip9000_demo.mp4`.
 7. Upload to YouTube, visibility **Unlisted**, title "GRIP-9000 · WHACK 26", copy the link into `docs/devpost.md` and Devpost.
