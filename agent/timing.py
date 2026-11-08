@@ -24,6 +24,7 @@ import shared
 #           "prefetch" - pre-written Claude line if a fresh one is ready, else bank
 #           "claude"   - live Claude line (1.8 s timeout, then bank)
 RULES = {
+    "party_over":         (101, 0.0, 1.00, True, "claude"),   # names the winner, roasts last place
     "game_over":          (100, 0.0, 1.00, True, "claude"),
     "bomb_hit":           (90, 4.0, 1.00, True, "prefetch"),
     "last_life":          (85, 0.0, 1.00, True, "claude"),
@@ -37,8 +38,12 @@ RULES = {
     "resume":             (40, 10.0, 0.50, False, "bank"),
     "halfway":            (36, 0.0, 1.00, False, "claude"),
     "pattern":            (35, 20.0, 1.00, False, "claude"),
+    "whiff":              (32, 8.0, 0.50, False, "bank"),     # swung at nothing (SpecSavers)
     "miss":               (30, 5.0, 0.45, False, "prefetch"),
     "intro":              (20, 0.0, 1.00, False, "bank"),
+    # face extension (--face): cooldowns are handled per expression, see FACE_COOLDOWN_*
+    "face":               (33, 0.0, 0.85, True, "bank"),     # waits for the floor (see FACE_WAIT), then speaks
+    "face_combo":         (45, 0.0, 1.00, True, "claude"),   # face + game context; waits for the floor too
     "slice":              (10, 12.0, 0.10, False, "bank"),
 }
 
@@ -49,6 +54,11 @@ PAUSE_LONG = 8.0            # one follow-up taunt if still paused after this
 RESUME_HUSH = 2.0           # gameplay heckles suppressed this long after resume
 HUSH_BELOW_PRIORITY = 60    # ...for candidates below this priority
 INTERRUPT_MIN_PRIORITY = 85 # only bomb, last life and game over may cut a line off mid-sentence
+FACE_COOLDOWN_EACH = 25.0   # the same expression is mentioned at most once per 25 s
+FACE_COOLDOWN_ANY = 10.0    # any face line at most once per 10 s
+COMBO_WAIT = 8.0            # a face combo may wait this long for the current line to end
+FACE_WAIT = 6.0             # a plain face reaction may wait this long (playtest: GRIP-9000 is almost never quiet)
+POST_GAME_WAIT = 12.0       # one face reaction after game over may wait for the roast to finish
 STREAK_MILESTONES = (5, 10, 15, 20, 25, 30)
 BIG_STREAK = 10
 MIN_COMBO = 4
@@ -96,6 +106,8 @@ class TimingEngine:
         self.pending_pause_at = None
         self.pause_line_spoken = False
         self.pause_long_done = False
+        self.pending_combo = None       # {"key", "vars", "deadline", "post_game"}: a face line waiting for the floor
+        self.post_game_face_done = False
 
     # ------------------------------------------------------------------ events
 
@@ -106,9 +118,23 @@ class TimingEngine:
         if kind == shared.GAME_START:
             self.reset_run()
             return self._consider("intro", {}, now)
+        if kind == shared.PARTY_OVER:
+            st = event["standings"]
+            return self._consider("party_over", {
+                "standings": st, "winner": st[0]["name"], "last_place": st[-1]["name"],
+            }, now)
         if self.over:
+            if kind == shared.FACE and not self.post_game_face_done and self.pending_combo is None:
+                # One reaction to the player's face after the roast (e.g. laughing at their own score).
+                self.post_game_face_done = True
+                self.pending_combo = {"key": "face", "vars": {"expression": event["expression"]},
+                                      "deadline": now + POST_GAME_WAIT, "post_game": True}
+                self.log(now, "face(" + event["expression"] + ") after game over: waits for the roast to end")
+                return None
             self.log(now, "drop " + kind + ": run is over")
             return None
+        if kind == shared.FACE:
+            return self._on_face(event, now)
         if kind == shared.SWORD_DRAWN:
             return self._consider("intro", {}, now)
         if kind == shared.GAME_OVER:
@@ -163,6 +189,8 @@ class TimingEngine:
             return self._consider("miss", {"side": event["side"], "n": self.stats.misses[event["side"]]}, now)
         if kind == shared.SLICE:
             return self._consider("slice", {"fruit": event["fruit"]}, now)
+        if kind == shared.WHIFF:
+            return self._consider("whiff", {}, now)
         return None
 
     # -------------------------------------------------------------------- tick
@@ -174,6 +202,19 @@ class TimingEngine:
         When a pattern Decision is returned, the caller must call
         detector.mark_spoken(decision.vars["pattern"]); unspoken patterns are offered again.
         """
+        if self.pending_combo is not None:
+            waiting = self.pending_combo
+            in_play = self.stats.running and not self.stats.paused and not self.over
+            if now > waiting["deadline"] or not (in_play or waiting["post_game"]):
+                self.log(now, "drop " + waiting["key"] + ": waited too long, moment passed")
+                self.pending_combo = None
+            elif not self.is_speaking(now):
+                self.pending_combo = None
+                decision = self._consider(waiting["key"], waiting["vars"], now)
+                if decision is not None:
+                    self._face_spoken(waiting["vars"]["expression"], now)
+                    return decision
+
         if self.over:
             return None
 
@@ -237,6 +278,61 @@ class TimingEngine:
     def is_speaking(self, now):
         return self.speaking_priority is not None and now < self.speaking_until
 
+    # ------------------------------------------------------------ face extension
+
+    def _on_face(self, event, now):
+        expression = event["expression"]
+        if not self.stats.running or self.stats.paused:
+            self.log(now, "drop face(" + expression + "): not in play")
+            return None
+        last_any = self.last_spoken.get("face_any")
+        if last_any is not None and now - last_any < FACE_COOLDOWN_ANY:
+            self.log(now, "drop face(" + expression + "): any-face cooldown")
+            return None
+        last_same = self.last_spoken.get("face:" + expression)
+        if last_same is not None and now - last_same < FACE_COOLDOWN_EACH:
+            self.log(now, "drop face(" + expression + "): cooldown for this expression")
+            return None
+
+        context = self._face_context(expression, now)
+        if context is not None:
+            key, vars_, wait = "face_combo", {"expression": expression, "context": context}, COMBO_WAIT
+        else:
+            key, vars_, wait = "face", {"expression": expression}, FACE_WAIT
+        if self.is_speaking(now):
+            if self.pending_combo is None or key == "face_combo":
+                self.pending_combo = {"key": key, "vars": vars_, "deadline": now + wait, "post_game": False}
+                self.log(now, key + " (" + expression + ") waits up to " + str(wait) + " s for the floor")
+            return None
+        decision = self._consider(key, vars_, now)
+        if decision is not None:
+            self._face_spoken(expression, now)
+        return decision
+
+    def _face_spoken(self, expression, now):
+        self.last_spoken["face_any"] = now
+        self.last_spoken["face:" + expression] = now
+
+    def _face_context(self, expression, now):
+        """A sentence for Claude when the face clashes with the game state, else None."""
+        s = self.stats
+        since_bomb = None if s.last_bomb_t is None else now - s.last_bomb_t
+        if expression in ("smiling", "laughing"):
+            if since_bomb is not None and since_bomb <= 4.0:
+                return "the player is " + expression + " right after slicing a bomb and losing a life"
+            if s.lives == 1:
+                return "the player is " + expression + " while on their very last life"
+        if expression == "shock" and since_bomb is not None and since_bomb <= 3.0:
+            return "the player's mouth just dropped open in shock after slicing a bomb"
+        if expression == "frowning":
+            recent = s.misses_within(now, 15.0)
+            if recent >= 3:
+                return "the player is frowning after letting " + str(recent) + " fruit fall in the last 15 seconds"
+        if expression == "looking_away" and s.current_streak >= 3:
+            return ("the player just looked away from the screen in the middle of a "
+                    + str(s.current_streak) + "-slice streak")
+        return None
+
     # --------------------------------------------------------------- the gates
 
     def _consider(self, key, vars_, now):
@@ -277,14 +373,21 @@ class TimingEngine:
         self.speaking_priority = priority
         self.speaking_until = now + PROVISIONAL_LINE_SECONDS
         self.quiet_until = self.speaking_until + GLOBAL_GAP
-        return Decision(key, priority, self._mood(key, vars_), source, vars_, interrupt, key == "game_over", now)
+        return Decision(key, priority, self._mood(key, vars_), source, vars_, interrupt, key in ("game_over", "party_over"), now)
 
     def _mood(self, key, vars_):
+        if key in ("face", "face_combo"):
+            expression = vars_.get("expression")
+            if expression in ("smiling", "laughing"):
+                return "rattled" if self.stats.winning() else "gloating"
+            if expression == "looking_away":
+                return "smug"
+            return "gloating"
         if key in ("streak", "streak_big", "combo"):
             return "rattled"
         if key == "pattern" and vars_.get("pattern") == "comeback":
             return "rattled"
-        if key in ("miss", "bomb_hit", "last_life", "streak_broken", "pattern"):
+        if key in ("miss", "whiff", "bomb_hit", "last_life", "streak_broken", "pattern", "party_over"):
             return "gloating"
         if key == "game_over":
             if vars_.get("new_best"):

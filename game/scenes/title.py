@@ -15,8 +15,9 @@ class TitleScene:
         self.app = app
         self.hold = FistHold(need_release)
         self.best = load_best()
-        self.settings_btn = Button("Settings", (C.W // 2 - 150, 610), (260, 64))
-        self.quit_btn = Button("Quit", (C.W // 2 + 150, 610), (260, 64))
+        self.party_btn = Button("Party", (C.W // 2 - 300, 610), (260, 64))   # leaderboard mode (RBadiadka7)
+        self.settings_btn = Button("Settings", (C.W // 2, 610), (260, 64))
+        self.quit_btn = Button("Quit", (C.W // 2 + 300, 610), (260, 64))
         self.blade = Blade(app.links.blade_length)
         self.rival = RivalDisplay(app, 150)
         self.sample = None
@@ -26,10 +27,14 @@ class TitleScene:
         self.blade.reset_history()
 
     def _over_button(self):
-        return self.app.input_name == "mouse" and (self.settings_btn.contains_mouse() or self.quit_btn.contains_mouse())
+        return self.app.input_name == "mouse" and (self.settings_btn.contains_mouse() or self.quit_btn.contains_mouse()
+                                                   or self.party_btn.contains_mouse())
 
     def handle_event(self, ev):
-        if self.settings_btn.clicked(ev):
+        if self.party_btn.clicked(ev) or (ev.type == pygame.KEYDOWN and ev.key == pygame.K_p):
+            from .party import PartySetupScene
+            self.app.switch_scene(PartySetupScene(self.app))
+        elif self.settings_btn.clicked(ev):
             from .settings import SettingsScene
             self.app.switch_scene(SettingsScene(self.app))
         elif self.quit_btn.clicked(ev) or (ev.type == pygame.KEYDOWN and ev.key == pygame.K_ESCAPE):
@@ -39,6 +44,7 @@ class TitleScene:
 
     def _start(self):
         from .play import PlayScene
+        self.app.party = None                 # plain PLAY is always solo
         self.app.switch_scene(PlayScene(self.app))
 
     def update(self, dt, now):
@@ -74,6 +80,7 @@ class TitleScene:
         if self.best:
             app.text(screen, f"Best  {self.best}", 34, (cx, 480), (255, 220, 80), "midtop", shadow=True)
 
+        self.party_btn.draw(app, screen)
         self.settings_btn.draw(app, screen)
         self.quit_btn.draw(app, screen)
         self.rival.draw(screen, now, (C.W - 100, 100), C.W - 190)

@@ -17,6 +17,7 @@ Rules:
 - "your_mood" is YOUR mood (GRIP-9000's), not the player's.
 - Never say the words "telemetry" or "GRIP-9000".
 - Never mention appearance, body, gender, race, religion, disability, age or anything sexual.
+- If you're told the player's expression (smiling, frowning, looking away...), comment only on the expression and what it says about their play, never on their face, looks or features.
 - No swearing. No emojis, no stage directions.
 - Output only the line."""
 
@@ -34,6 +35,9 @@ BANNED = (
     "trans", "black", "asian", "jew", "jewish", "muslim", "christian", "hindu", "religion",
     "sexy", "sex", "boobs", "kill yourself", "die", "suicide", "old man", "old woman", "grandma",
     "grandpa", "girl", "boy", "woman", "man", "wife", "husband",
+    # appearance (face extension): expressions are fair game, looks are not
+    "teeth", "nose", "skin", "hair", "bald", "beard", "wrinkle", "wrinkles", "glasses", "pretty",
+    "handsome", "beautiful", "cute", "chin", "forehead", "eyebrows", "lips", "complexion", "spots",
 )
 
 

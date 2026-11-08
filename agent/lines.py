@@ -27,6 +27,11 @@ def bank_key(decision_key, mood, vars_):
         if vars_.get("new_best"):
             return "game_over.new_best"
         return "game_over." + vars_.get("reason", "timer")
+    if decision_key in ("face", "face_combo"):
+        expression = vars_.get("expression", "smiling")
+        if mood == "rattled" and expression in ("smiling", "laughing"):
+            return "face." + expression + ".rattled"
+        return "face." + expression
     if decision_key == "time_warning":
         if mood == "rattled":
             return "time_warning.rattled"

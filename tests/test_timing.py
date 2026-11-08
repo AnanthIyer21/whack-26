@@ -207,3 +207,134 @@ def test_persona_filter():
     assert filter_line("You missed. Hell of a swing.") is None          # mild swearing rejected
     assert filter_line("*sighs* Missed again.") == "Missed again."       # stage directions stripped
     assert filter_line('"Quoted line here, please."') == "Quoted line here, please."
+
+
+# ------------------------------------------------------------ face extension
+
+def face(t, expression):
+    return ev(shared.ev_face, t, expression, 0.7)
+
+
+def test_face_line_and_its_cooldowns():
+    stats, engine = setup()
+    start(stats, engine)
+    d = feed(stats, engine, face(10.0, "smiling"))
+    assert d is not None and d.key == "face" and d.source == "bank" and d.priority == 33
+    engine.line_finished(11.0)
+    assert feed(stats, engine, face(15.0, "shock")) is None        # any-face cooldown (10 s)
+    assert feed(stats, engine, face(25.0, "smiling")) is None      # same expression within 25 s
+    d2 = feed(stats, engine, face(25.0, "frowning"))
+    assert d2 is not None and d2.vars["expression"] == "frowning"
+
+
+def test_face_ignored_when_not_in_play():
+    stats, engine = setup()
+    assert feed(stats, engine, face(1.0, "smiling")) is None       # before game_start
+    start(stats, engine)
+    feed(stats, engine, ev(shared.ev_pause, 10.0, "no_hand"))
+    assert feed(stats, engine, face(10.5, "looking_away")) is None
+
+
+def test_face_never_interrupts_but_waits_for_the_floor():
+    stats, engine = setup()
+    start(stats, engine)
+    miss = feed(stats, engine, ev(shared.ev_miss, 10.0, "left"))
+    engine.line_started(miss, 3.0, 10.0)
+    assert feed(stats, engine, face(10.5, "smiling")) is None        # not cut in...
+    assert engine.tick(12.0) is None                                   # ...still talking
+    engine.line_finished(13.0)
+    d = engine.tick(13.05)                                             # floor free: speaks at once, no gap
+    assert d is not None and d.key == "face" and d.vars["expression"] == "smiling"
+
+
+def test_one_face_reaction_after_game_over():
+    stats, engine = setup()
+    start(stats, engine)
+    roast = feed(stats, engine, ev(shared.ev_game_over, 20.0, 90, 2, 20.0, "timer"))
+    engine.line_started(roast, 6.0, 20.0)
+    assert feed(stats, engine, face(22.0, "laughing")) is None        # waits for the roast
+    assert feed(stats, engine, face(23.0, "smiling")) is None         # only one post-game reaction
+    engine.line_finished(26.0)
+    d = engine.tick(26.05)
+    assert d is not None and d.key == "face" and d.vars["expression"] == "laughing"
+    engine.line_finished(28.0)
+    assert engine.tick(30.0) is None
+
+
+def test_shock_after_bomb_waits_for_the_bomb_line_then_speaks():
+    stats, engine = setup()
+    start(stats, engine)
+    feed(stats, engine, ev(shared.ev_bomb_hit, 10.0))
+    feed(stats, engine, ev(shared.ev_life_lost, 10.0, 2))
+    bomb = engine.tick(10.2)
+    engine.line_started(bomb, 2.5, 10.2)
+    assert feed(stats, engine, face(10.8, "shock")) is None        # waiting, not dropped
+    assert engine.tick(11.5) is None                                # still talking
+    engine.line_finished(12.7)
+    combo = engine.tick(12.75)                                       # floor free: speaks at once, no 2.5 s gap
+    assert combo is not None and combo.key == "face_combo" and combo.source == "claude"
+    assert "bomb" in combo.vars["context"] and combo.mood == "gloating"
+
+
+def test_combo_expires_after_waiting_too_long():
+    stats, engine = setup()
+    start(stats, engine)
+    feed(stats, engine, ev(shared.ev_bomb_hit, 10.0))
+    feed(stats, engine, ev(shared.ev_life_lost, 10.0, 2))
+    bomb = engine.tick(10.2)
+    engine.line_started(bomb, 12.0, 10.2)                            # a very long line
+    feed(stats, engine, face(10.8, "shock"))
+    assert engine.tick(19.0) is None                                 # 8.2 s later: moment passed
+    engine.line_finished(22.2)
+    assert engine.tick(22.3) is None
+
+
+def test_smiling_while_winning_is_rattled():
+    stats, engine = setup()
+    start(stats, engine)
+    for i in range(6):
+        stats.update(ev(shared.ev_slice, 5.0 + i * 0.1, "apple"))
+    d = feed(stats, engine, face(10.0, "smiling"))
+    assert d.mood == "rattled"
+
+
+def test_frowning_after_misses_is_a_combo():
+    stats, engine = setup()
+    start(stats, engine)
+    for t in (5.0, 6.0, 7.0):
+        stats.update(ev(shared.ev_miss, t, "right"))
+    d = feed(stats, engine, face(12.0, "frowning"))
+    assert d.key == "face_combo" and "3 fruit" in d.vars["context"]
+
+
+# ---- whiff + party mode (RBadiadka7)
+
+def test_whiff_gets_a_bank_heckle_with_cooldown():
+    stats, engine = setup()
+    start(stats, engine)
+    d = feed(stats, engine, ev(shared.ev_whiff, 20.0))
+    assert d is not None and d.key == "whiff" and d.source == "bank" and d.mood == "gloating"
+    engine.line_finished(21.0)
+    assert feed(stats, engine, ev(shared.ev_whiff, 25.0)) is None      # 8 s cooldown
+
+
+def test_party_over_after_game_over_is_final_and_interrupts_the_roast():
+    stats, engine = setup()
+    start(stats, engine)
+    over = feed(stats, engine, ev(shared.ev_game_over, 60.0, 300, 4, 60, "timer"))
+    assert over.final
+    standings = [{"name": "Di", "score": 340}, {"name": "Fred", "score": 120}]
+    d = feed(stats, engine, ev(shared.ev_party_over, 61.0, standings))   # roast still playing
+    assert d is not None and d.final and d.interrupt and d.source == "claude"
+    assert d.vars["winner"] == "Di" and d.vars["last_place"] == "Fred"
+
+
+def test_game_start_player_is_optional():
+    assert "player" not in shared.ev_game_start(60, 3)
+    assert shared.ev_game_start(60, 3, player="Di")["player"] == "Di"
+
+
+def test_new_events_have_bank_lines():
+    from agent.lines import Bank
+    bank = Bank()
+    assert bank.pick("whiff", {}) and bank.pick("party_over", {"standings": [], "winner": "A", "last_place": "B"})

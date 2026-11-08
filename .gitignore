@@ -16,3 +16,5 @@ data/
 *.mkv
 *.webm
 *.m4v
+# downloaded test photos (Google MediaPipe samples), fetched on demand by tests; never committed
+tests/data/
