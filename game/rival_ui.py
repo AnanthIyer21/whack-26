@@ -12,8 +12,13 @@ SS = 3
 MOODS = ("smug", "rattled", "defensive", "gloating")
 LAUGH_FACES = ("laughing", "laughing2")   # two mouth frames, swapped quickly = cackling
 LAUGH_TIME = 2.8                          # seconds GRIP-9000 cackles after you hit a bomb
+# The laugh uses RBadiadka7's pineapple: gloating face, mouth wide open / closed, swapped fast.
+# (A dedicated avatar/laughing.png + laughing2.png would win if they're ever added.)
+LAUGH_ART = {"laughing": ("avatar/laughing.png", "rival_gloating_talk.png"),
+             "laughing2": ("avatar/laughing2.png", "rival_gloating.png")}
 TYPE_SPEED = 40          # characters per second
 ASSET_DIR = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "assets", "avatar")
+ART_DIR = os.path.dirname(ASSET_DIR)      # assets/
 
 
 def _face(mood, size):
@@ -86,6 +91,7 @@ def _face(mood, size):
 
 
 _cache = {}
+_pixel = set()          # cache keys that are RBadiadka7's pixel art (keep them crisp)
 
 
 def face(mood, size):
@@ -93,14 +99,23 @@ def face(mood, size):
     key = (mood, size)
     if key not in _cache:
         img = None
-        path = os.path.join(ASSET_DIR, mood + ".png")
-        if os.path.exists(path):
-            try:
-                img = pygame.transform.scale(pygame.image.load(path).convert_alpha(), (size, size))
-            except pygame.error:
-                img = None
+        paths = ([os.path.join(ART_DIR, p) for p in LAUGH_ART[mood]] if mood in LAUGH_FACES
+                 else [os.path.join(ASSET_DIR, mood + ".png")])
+        for path in paths:
+            if os.path.exists(path):
+                try:
+                    img = pygame.transform.scale(pygame.image.load(path).convert_alpha(), (size, size))
+                    _pixel.add(key)
+                    break
+                except pygame.error:
+                    img = None
         _cache[key] = img or _face(mood, size)
     return _cache[key]
+
+
+def is_pixel_art(mood, size):
+    face(mood, size)
+    return (mood, size) in _pixel
 
 
 def wrap(font, text, width):
@@ -206,7 +221,12 @@ class RivalDisplay:
             k = self.laugh_k * fade
             frame = LAUGH_FACES[int(now * 9) % 2]
             img = face(frame, size)
-            img = pygame.transform.rotozoom(img, math.sin(now * 14) * 9 * k, 1 + 0.07 * k)
+            pixel = is_pixel_art(frame, size)
+            tilt = math.sin(now * 14) * 9 * k
+            if pixel:                       # pixel art: nearest-neighbour rotate, stays crisp
+                img = pygame.transform.rotate(img, round(tilt / 3) * 3)
+            else:
+                img = pygame.transform.rotozoom(img, tilt, 1 + 0.07 * k)
             center = (avatar_center[0] + math.sin(now * 23) * 3 * k,
                       avatar_center[1] - abs(math.sin(now * 18)) * 7 * k)
         else:
@@ -214,6 +234,8 @@ class RivalDisplay:
             if bounce:
                 img = pygame.transform.rotozoom(img, math.sin(now * 40) * 6 * bounce * 4, 1 + bounce)
         screen.blit(img, img.get_rect(center=center))
+        if self.laughing(now) and is_pixel_art(LAUGH_FACES[0], size):
+            self._pixel_tears(screen, now, center, size, k)
         self._draw_has(screen, now, avatar_center, size)
 
         cur = None
@@ -240,3 +262,19 @@ class RivalDisplay:
             bubble.blit(font.render(l, True, (25, 25, 35)), (18, 13 + i * lh))
         bubble.set_alpha(alpha)
         screen.blit(bubble, (bubble_right - w - 20, avatar_center[1] - tail_y))
+
+    def _pixel_tears(self, screen, now, center, size, k):
+        """Blocky tears streaming from the pineapple's eyes (matches the pixel-art style)."""
+        px = max(3, size // 40)                       # chunky enough to read at avatar size
+        x0, y0 = center[0] - size / 2, center[1] - size / 2
+        for i, (ex, side) in enumerate(((0.27, -1), (0.73, 1))):
+            for j in range(2):                        # two drops per eye, staggered
+                u = ((now - self.laugh_t0) * 2.2 + j * 0.5 + i * 0.25) % 1.0
+                x = x0 + size * ex + side * u * size * 0.10
+                y = y0 + size * 0.50 + u * u * size * 0.30
+                x, y = round(x / px) * px, round(y / px) * px    # snap to the pixel grid
+                a = int(255 * k * (1 - u))
+                drop = pygame.Surface((px * 2, px * 3), pygame.SRCALPHA)
+                drop.fill((110, 190, 255, a))
+                drop.fill((235, 250, 255, a), pygame.Rect(0, 0, px, px))
+                screen.blit(drop, (x, y))
