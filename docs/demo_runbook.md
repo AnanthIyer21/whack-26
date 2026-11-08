@@ -21,15 +21,16 @@ git add results/ && git commit -m "Reliability + latency results and numbers sli
 In each run: one hand in view, SPACE to start, do what the screen says (GRIP! / OPEN!), R redoes a trial if
 you weren't ready, ESC saves and quits. Failures count; that's the point.
 
-## Sunday schedule (proposed: team back at 09:20)
+## Sunday schedule (team back at 09:30)
 | Time | What | Who |
 |---|---|---|
-| 09:20 to 09:25 | Merge the rbadiadka7 PR, `git pull origin staging` on Ananth's laptop, pre-flight checklist below | Ananth |
-| 09:25 to 09:50 | Reliability check, 8 runs (commands above) | all four, one at a time |
-| 09:50 to 10:05 | 3 to 4 real games with `--rival real` (fills the voice latency). Take the Devpost screenshots during these, plus one QuickTime recording as the backup video | Aaron plays, RBadiadka7 screenshots + records |
-| 10:05 to 10:10 | `reliability_summary.py` + `make_numbers_slide.py`, commit + push `results/` | RBadiadka7 |
-| 10:05 to 10:25 | Devpost: fill the numbers, upload images, team name, link all 4 collaborators, choose incident.io | RBadiadka7 + Ananth |
-| 10:25 to 10:30 | Final read-through, **SUBMIT** | RBadiadka7 + Ananth |
+| 09:30 to 09:35 | Decide on the new rbadiadka7 commits (roasts, party leaderboard, whiff + name roasts), merge the PR, `git pull origin staging`, pre-flight checklist below | all, Ananth merges |
+| 09:35 to 09:40 | `python tools/voice_bank.py` to voice the new roasts (needs the ElevenLabs key) | Ananth |
+| 09:35 to 10:00 | Reliability check, 8 runs (commands above). **Short on time?** 4 right-hand runs only, ~12 min | all four, one at a time |
+| 10:00 to 10:10 | One **party** round with `--rival real` (fills the voice latency, shows off the leaderboard). Take the Devpost screenshots during it, plus one QuickTime recording as the backup video | all play, RBadiadka7 screenshots + records |
+| 10:10 to 10:15 | `reliability_summary.py` + `make_numbers_slide.py`, commit + push `results/` | RBadiadka7 |
+| 10:10 to 10:27 | Devpost: fill the numbers, upload images, team name, link all 4 collaborators, choose incident.io | RBadiadka7 + Ananth |
+| 10:27 to 10:30 | Final read-through, **SUBMIT** | RBadiadka7 + Ananth |
 | After 10:30 | **Rehearsal 1** (full pitch + one forced failure, e.g. pull the camera), fix roles/script, **Rehearsal 2**, before the afternoon slot | all |
 
 ## Pre-flight checklist (before every rehearsal and the real pitch)
