@@ -11,7 +11,11 @@ BLADE_LENGTH_FALLBACK = 0.30   # fraction of screen height; the real value comes
 DRAW_TIME = 0.15               # seconds for the blade to grow out of the fist
 TRAIL_TIME = 0.12              # seconds of swept ribbon kept behind the blade
 CUT_SPEED = 1.2                # tip speed needed to cut, in screen heights per second
-MAX_SAMPLE_GAP = 0.10          # samples further apart than this reset the blade history (no cut)
+MAX_SAMPLE_GAP = 0.10          # normal gap between tracking samples; longer = a lag spike / dropout
+MAX_BRIDGE_GAP = 0.45          # lag spikes and short dropouts up to this long are BRIDGED: the blade
+                               # is swept along the straight path, so fruit in between still get cut
+MAX_BRIDGE_DIST = 0.8          # ...unless the fist "jumped" further than this (fraction of width):
+                               # that's a tracking glitch, not a swing
 MAX_SUBSTEP_ANGLE = math.radians(15)  # big rotations are split into steps no larger than this
 
 # Hand tracking

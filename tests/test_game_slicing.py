@@ -62,12 +62,55 @@ def test_long_gap_never_cuts():
 
 def test_reset_needs_two_fresh_samples():
     b = drawn_blade()
-    b.freeze()
-    b.unfreeze()
-    b.update(sample(1000, 400, -math.pi / 2, 0.1), 1.1)   # first sample after reset
+    b.reset_history()                                    # e.g. after a pause or input switch
+    b.update(sample(1000, 400, -math.pi / 2, 0.1), 1.1)  # first sample after reset
     assert b.take_sweeps() == []
     b.update(sample(1100, 400, -math.pi / 2, 0.1 + 1 / 30), 1.13)
     assert b.take_sweeps()
+
+
+def test_lag_spike_is_bridged_and_cuts_fruit_in_the_path():
+    b = drawn_blade()
+    b.update(sample(700, 400, -math.pi / 2, 1 / 30), 1.03)          # swinging right, fast
+    b.take_sweeps()
+    b.update(sample(1100, 400, -math.pi / 2, 1 / 30 + 0.3), 1.33)   # 0.3 s lag, then 400 px on
+    sweeps = b.take_sweeps()
+    assert sweeps and all(sw.bridged for sw in sweeps)
+    assert sweeps[0].speed >= C.CUT_SPEED                            # kept the swing speed
+    assert any(circle_hits_quad(900, 300, 20, sw.quad) for sw in sweeps)   # fruit mid-lag: cut
+
+
+def test_short_dropout_is_bridged_from_the_last_good_spot():
+    b = drawn_blade()
+    b.update(sample(700, 400, -math.pi / 2, 1 / 30), 1.03)
+    b.take_sweeps()
+    b.freeze()                                           # hand lost for a moment
+    b.unfreeze()
+    b.update(sample(1000, 400, -math.pi / 2, 0.3), 1.3)  # back 0.27 s later, further along
+    sweeps = b.take_sweeps()
+    assert any(circle_hits_quad(850, 300, 20, sw.quad) for sw in sweeps)
+
+
+def test_too_long_or_teleport_is_never_bridged():
+    b = drawn_blade()
+    b.update(sample(700, 400, -math.pi / 2, 1 / 30), 1.03)
+    b.take_sweeps()
+    b.update(sample(1000, 400, -math.pi / 2, 0.6), 1.6)    # 0.57 s: genuinely lost
+    assert b.take_sweeps() == []
+    b2 = drawn_blade()
+    b2.update(sample(660, 400, -math.pi / 2, 1 / 30), 1.03)
+    b2.take_sweeps()
+    b2.update(sample(-500, 400, -math.pi / 2, 0.2), 1.2)   # jumped > 0.8 of the width: glitch
+    assert b2.take_sweeps() == []
+
+
+def test_pause_never_bridges():
+    b = drawn_blade()
+    b.sheathe()                                          # paused
+    b.draw_out(2.0)                                      # resumed
+    b.update(sample(1200, 400, -math.pi / 2, 0.2), 2.5)
+    b.update(sample(1210, 400, -math.pi / 2, 0.2 + 1 / 30), 2.53)
+    assert all(not circle_hits_quad(900, 300, 20, sw.quad) for sw in b.take_sweeps())
 
 
 def test_no_cut_while_drawing():
