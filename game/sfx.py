@@ -7,7 +7,8 @@ Hooked in at three places, nothing else needs to know about it:
   - game/scenes/play.py _slice     -> sfx.swing_frame(top_speed, now)  (whoosh; returns "whiff")
 
 Rules: never touches channel 0 (GRIP-9000's voice, reserved by app.py); everything is
-multiplied by shared.DUCK_LEVEL while shared.rival_speaking is set; any missing file,
+ducked hard (RIVAL_DUCK, stronger than shared.DUCK_LEVEL) while shared.rival_speaking is
+set, including sounds that were already playing (whole channels are ducked); any missing file,
 missing audio device or mixer error just means silence, never a crash.
 """
 import os
@@ -26,7 +27,13 @@ ASSETS = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))
 
 SFX_VOLUME = 0.7
 MUSIC_VOLUME = 0.22      # background music sits well under the effects and GRIP-9000
-EXPLOSION_VOLUME = 1.0   # the bomb is never ducked: it must be heard over the rival's laugh
+SLICE_VOLUME = 1.0       # the slash is the star: full volume (other effects 0.7)
+EXPLOSION_VOLUME = 1.0
+# While GRIP-9000 talks, our sounds drop hard so they never fight the voice. Stronger than
+# shared.DUCK_LEVEL (0.35) because the slashes are loud; we never go above the shared level.
+RIVAL_DUCK = min(0.12, shared.DUCK_LEVEL)     # about -18 dB for SFX and music
+EXPLOSION_DUCK = 0.5                          # the bomb still lands under the bomb laugh
+DUCK_RAMP = 0.35                              # per-frame step towards the target (~100 ms)   # the bomb is never ducked: it must be heard over the rival's laugh
 
 # Swings: a "swing" is a burst of fast blade motion. Whoosh when one starts; if it ends
 # without cutting anything it's a whiff (the rival can roast it).
@@ -55,7 +62,9 @@ MUSIC = {"play": "music_game.ogg", "menu": "music_menu.ogg"}
 _sounds = {}
 _loaded = False
 _enabled = True
-_duck = 1.0
+_duck = 1.0              # music level (0..1), ramps towards its target
+_chan_level = {}         # channel id -> current duck level (ramps)
+_chan_floor = {}         # channel id -> duck level for what's playing there (explosion: EXPLOSION_DUCK)
 _music_now = None        # which track is playing: "play" / "menu" / None
 _quiet_until = 0.0       # no music before this time (after game over)
 _scheduled = []          # [(time, sound name)] for sounds that must wait (the explosion)
@@ -99,8 +108,13 @@ def play(name, volume=None, duck=True):
     if snd is None:
         return
     try:
-        snd.set_volume((SFX_VOLUME if volume is None else volume) * (_duck if duck else 1.0))
-        _pick_channel().play(snd)
+        snd.set_volume(SFX_VOLUME if volume is None else volume)
+        ch = _pick_channel()
+        _chan_floor[ch.id] = RIVAL_DUCK if duck else EXPLOSION_DUCK
+        target = _chan_floor[ch.id] if shared.rival_speaking.is_set() else 1.0
+        _chan_level[ch.id] = target                 # start at the right level, no ramp
+        ch.set_volume(target)
+        ch.play(snd)
     except pygame.error:
         pass
 
@@ -129,7 +143,7 @@ def on_event(type_):
     global _quiet_until
     names = EVENT_SOUNDS.get(type_)
     if names:
-        play(random.choice(names))
+        play(random.choice(names), volume=SLICE_VOLUME if type_ == "slice" else None)
     for n in LAYERS.get(type_, ()):
         play(n)
     if type_ in ("slice", "bomb_hit") and _swing is not None:
@@ -207,7 +221,19 @@ def update(app):
             for i in range(pygame.mixer.get_num_channels()):
                 if i != shared.VOICE_CHANNEL:
                     pygame.mixer.Channel(i).stop()
-    _duck = shared.DUCK_LEVEL if shared.rival_speaking.is_set() else 1.0
+    speaking = shared.rival_speaking.is_set()
+    _duck += ((RIVAL_DUCK if speaking else 1.0) - _duck) * DUCK_RAMP
+    for i in range(pygame.mixer.get_num_channels()):   # duck what's already playing too
+        if i == shared.VOICE_CHANNEL:
+            continue
+        target = _chan_floor.get(i, RIVAL_DUCK) if speaking else 1.0
+        lvl = _chan_level.get(i, 1.0)
+        lvl += (target - lvl) * DUCK_RAMP
+        _chan_level[i] = lvl
+        try:
+            pygame.mixer.Channel(i).set_volume(lvl)
+        except pygame.error:
+            pass
     try:
         pygame.mixer.music.set_volume(MUSIC_VOLUME * _duck if _enabled else 0.0)
     except pygame.error:

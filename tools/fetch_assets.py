@@ -20,6 +20,7 @@ OGA = "https://opengameart.org/sites/default/files/"
 SR = 44100
 SLICE_MAX = 0.45      # slices are cut to this length (s) with a fade, so they stay snappy
 SLICE_FADE = 0.08
+SLICE_DRIVE = 3.0     # soft-clip compression on slices: louder body/scrape, same peak
 
 PACKS = {
     # key: (zip url, page url, title, author, licence)
@@ -52,13 +53,13 @@ SOUNDS = {
     # violent knife-sharpener slash: metal clash (the hit) + knife scrape ("shhing") + faint air
     "sfx_slice_1": [("weapons", "sfx/sword-knife-clash-16.wav", 0.9, 0.0),
                     ("weapons", "sfx/knife-unsheathe-04.wav", 0.8, 0.0),
-                    ("swish", "swishes/swish-3.wav", 0.25, 0.0), 0.95],
+                    ("swish", "swishes/swish-3.wav", 0.25, 0.0), 0.75],
     "sfx_slice_2": [("weapons", "sfx/sword-knife-clash-15.wav", 0.9, 0.0),
                     ("weapons", "sfx/knife-unsheathe-03.wav", 0.8, 0.0),
-                    ("swish", "swishes/swish-7.wav", 0.25, 0.0), 0.95],
+                    ("swish", "swishes/swish-7.wav", 0.25, 0.0), 0.75],
     "sfx_slice_3": [("weapons", "sfx/sword-knife-clash-29.wav", 0.9, 0.0),
                     ("swords", "sword - StarNinjas/sword.6.ogg", 0.8, 0.0),
-                    ("swish", "swishes/swish-9.wav", 0.25, 0.0), 0.95],
+                    ("swish", "swishes/swish-9.wav", 0.25, 0.0), 0.68],
     "sfx_whoosh_1": ("swish", "swishes/swish-1.wav", 0.75),
     "sfx_whoosh_2": ("swish", "swishes/swish-5.wav", 0.75),
     "sfx_explosion": ("sfx512", SFX512 + "Explosions/Long/sfx_exp_long4.wav", 1.0),
@@ -128,6 +129,9 @@ def main():
             mix = mix[:int(SLICE_MAX * SR)]
             f = int(SLICE_FADE * SR)
             mix[-f:] *= np.linspace(1, 0, f)[:, None]
+        if name.startswith("sfx_slice"):
+            mix = mix / (np.abs(mix).max() or 1.0)
+            mix = np.tanh(SLICE_DRIVE * mix) / np.tanh(SLICE_DRIVE)
         out = (mix / (np.abs(mix).max() or 1.0) * gain).astype(np.float32)
         path = os.path.join(ROOT, "sounds", name + ".ogg")
         sf.write(path, out, SR, format="OGG", subtype="VORBIS")
