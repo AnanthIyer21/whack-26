@@ -10,7 +10,7 @@
 > We're also automatically in WHACKiest Hack and Most Creative.
 
 ## Team name
-GRIP-9000 (change if the team prefers another)
+The Flairy Fairies
 
 ## Project name
 GRIP-9000: Fruit Ninja with a real sword grip and a rival who never shuts up

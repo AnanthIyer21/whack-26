@@ -21,7 +21,7 @@
 | 1:00 to 1:12 | Phone shot: hand opens → screen freezes (pause screen); fist → 3-2-1 | Text: "Open hand = instant pause." GRIP-9000 mocks the pause |
 | 1:12 to 1:25 | Game over screen with the final roast (live Claude) | Roast audio |
 | 1:25 to 1:40 | `results/numbers_slide.png` (zoom in slowly) | Voiceover: "MediaPipe landmarks plus our own grip maths, nothing trained. [[NN]] ms camera to game, [[NN]]% grips recognised, quick lines in [[N]] ms." |
-| 1:40 to 1:45 | Logo/title + team names + repo | Text: "GRIP-9000 · WHACK 26 · Aaron, Ananth, Pricysquirrl, RBadiadka7" |
+| 1:40 to 1:45 | Logo/title + team names + repo | Text: "GRIP-9000 · The Flairy Fairies · WHACK 26" |
 
 ## iMovie steps
 1. New Project → Movie → import the QuickTime + phone clips and the slide PNG.
