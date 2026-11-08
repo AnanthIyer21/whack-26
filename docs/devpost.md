@@ -1,83 +1,81 @@
 # Devpost draft: GRIP-9000
 
-> Owner: RBadiadka7. Paste each section into Devpost (https://whack-2026.devpost.com). Fill in the `[[...]]`
-> numbers from `results/` after the reliability check. Never call the grip detection a "trained model".
->
-> **Rules (checked on the WHACK 2026 Devpost, 8 Nov):** deadline 11:00 GMT; must have a **team name**; **all
-> four collaborators linked** to the Devpost project; built during the hackathon; must have attempted ONE title
-> sponsor problem statement (we pick **incident.io**). Submit "with plenty of images". **No video is required.**
-> Judging is a **3 minute slot** presenting to the chosen sponsor in the afternoon (live demo, slides, anything).
-> We're also automatically in WHACKiest Hack and Most Creative.
+> Team note, don't paste this bit. Deadline 11:00 GMT. Needs: team name, all four of us linked, incident.io
+> picked, lots of images. No video required. Never call the grip detection a "trained model".
 
 ## Team name
 The Flairy Fairies
 
 ## Project name
-GRIP-9000: Fruit Ninja with a real sword grip and a rival who never shuts up
+GRIP-9000
 
-## Tagline (one line)
-Make a fist, draw a sword, slash fruit through your webcam, while a smug AI pineapple roasts you live.
-
-## Challenge
-incident.io: "Build an agent that reacts to a live feed as it happens, with personality."
+## Tagline
+Make a fist, a sword appears, and a very rude pineapple starts heckling you.
 
 ## Inspiration
-Most AI waits for you to type. We wanted one that watches you in real time and reacts before you could ever write a prompt, and we wanted it to be *annoying*. Nothing is more live than a game where you swing a sword with your hand, and nothing has more personality than a rival who laughs when you hit a bomb.
+The incident.io brief said the best moments are over before you could type a prompt about them. That stuck with us. Every AI we use sits there waiting for us to ask it something. We wanted the opposite: an AI that's watching you the whole time and has opinions about it, out loud, right now.
+
+So we made it a game, because nothing happens faster than a game, and we gave the AI an ego. GRIP-9000 is a pineapple in sunglasses who thinks humans are obsolete. When you miss a fruit he tells you to book an eye test at SpecSavers. When you go on a streak he starts making excuses. We wanted something you'd want to beat just to shut him up.
 
 ## What it does
-- Hold one hand up and **make a fist: a sword appears in it**. The blade follows the tilt of your fist, so you slash fruit by swinging it like a real sword.
-- Fruit flies up; cut it with a fast swing for points, combos and streaks. Hit a bomb and you lose one of 3 lives. A run lasts 60 seconds.
-- **Auto-pause:** open your hand, drop it, or bring in a second hand and the game freezes instantly. Close your fist again for a 3-2-1 and you're back.
-- **GRIP-9000**, a smug pixel-art pineapple, watches every move and heckles you out loud *in the moment*: it cackles when you hit a bomb, gets rattled when you're on a streak, mocks you for pausing, and spots your habits (always missing on the left? it notices). Its big-moment roasts are written live by Claude and voiced by ElevenLabs; everything else comes from a pre-voiced bank so it's instant.
-- **It reads your face too:** smile, laugh, look shocked or look away and GRIP-9000 reacts to your expression.
-- **Party mode:** type in everyone's names, take turns, and GRIP-9000 names the winner and roasts last place on the leaderboard (stored in SQLite, plus an all-time top 10).
-- Knife-sharp slash sounds, a whoosh on every swing, music that ducks under the rival's voice.
+Hold one hand up to your webcam and make a fist. A sword appears in it. Tilt your fist and the blade tilts with it. Swing it fast through the fruit to slice them, and don't touch the bombs.
+
+The whole time, GRIP-9000 is watching and talking:
+- He cackles when you hit a bomb and gets visibly rattled when you're on a roll.
+- He notices habits, like if you keep missing everything on the left.
+- He reacts to your face too. Smile at him, look shocked, look away, and he'll have something to say about it.
+- At game over he writes you a personal roast based on how you actually played.
+
+Open your hand, drop it, or put a second hand in frame, and the game pauses instantly. Make a fist again for a 3-2-1 and you're back in. No buttons needed.
+
+There's also a party mode: type in everyone's names, take turns, and at the end GRIP-9000 reads out the leaderboard, crowns the winner (reluctantly) and roasts whoever came last, by name.
 
 ## How we built it
-One Python program, four threads talking through small shared interfaces:
-- **Vision thread:** OpenCV webcam → **MediaPipe** hand landmarks (21 points per hand, pretrained, not ours) → **our own maths**: finger curl from 3D landmark distances and angles decides grip / open / unclear, with a stabiliser so it doesn't flicker; a One Euro filter smooths the blade; the blade runs along your fist so tilting your fist tilts the sword. Publishes an immutable `HandState` every frame. **Nothing is trained.**
-- **Game thread:** pygame-ce at a steady 60 fps. Fruit and blade hitboxes, slicing only above a speed threshold, combos, streaks, bombs, lives, the auto-pause state machine, and lag bridging (if tracking drops a frame, the blade's path is still checked so fast swings don't miss).
-- **Rival thread:** reads game events (slice, miss, combo, bomb, pause...) and decides *whether* to speak with priorities, cooldowns and a global gap so it never talks over itself. Small moments use a bank of lines pre-voiced with ElevenLabs (instant). Big moments (game over, last life, patterns in how you play) are written live by **Claude** (claude-haiku-5-5) with a strict persona, then voiced with **ElevenLabs Flash**. Some Claude lines are pre-fetched and pre-voiced before they're needed.
-- **Face thread:** MediaPipe face landmarks → our own expression thresholds with rolling calibration and hysteresis (smiling, laughing, shock, frowning, looking away), so GRIP-9000 can react to your face, not just your sword.
-- **Art and sound:** all pixel art drawn in code by us (the pineapple's four moods, fruit and halves, sword, explosions); CC0 sound effects layered and processed into a metal-clash-plus-knife-scrape slash.
+It's one Python program running four things at once:
+
+- **Hand tracking.** MediaPipe gives us 21 points on your hand. That part is Google's, not ours. Everything after it is our own maths: we work out how curled each finger is from the 3D points to tell a fist from an open hand, steady it so it doesn't flicker, and smooth the blade so it follows your fist without jittering. We didn't train anything.
+- **Face reactions.** MediaPipe's face landmarks, then our own thresholds for smiling, laughing, shock, frowning and looking away. It calibrates to your resting face, so it isn't fooled by someone who just looks a bit grumpy.
+- **The game.** pygame at 60 fps: fruit, bombs, lives, combos, streaks, the auto-pause, and the sword's swing checked along its whole path so fast swings still connect.
+- **GRIP-9000.** The hard part wasn't what he says, it was *when*. Every moment has a priority and a cooldown, he never talks over himself, and he stays quiet right after you unpause. Quick reactions come from a bank of pre-recorded lines so they play instantly. The big moments, like the game over roast or calling out your habits, are written live by Claude and voiced by ElevenLabs.
+- **Art and sound.** Every sprite is pixel art drawn in code, including the pineapple's moods. The slash sound is a metal clash layered with a knife being sharpened, made from free CC0 samples.
+- **Party mode** keeps scores in SQLite, with an all-time top 10.
 
 ## Challenges we ran into
-- **Grip without training:** telling a fist from an open or half-open hand from landmark geometry alone, for different hands and both left and right, and making it stable enough that the game doesn't pause by accident.
-- **Real-time on one laptop:** three threads in Python. `clock.tick(60)` only reached ~39 fps on macOS and busy-waiting starved the vision and rival threads; we wrote our own frame pacer.
-- **Library traps:** OpenCV 5 and the GUI builds bundle SDL and clash with pygame; MediaPipe 1.2.2 dropped the old hands API; pygame-ce's `find_channel()` ignores reserved channels, which silently swallowed every sound effect until we picked channels ourselves.
-- **Talking at the right time:** an agent that comments on *everything* is unbearable. The hard part was timing: priorities, cooldowns, and staying quiet right after you resume.
-- **Latency of a voice:** a live Claude + TTS line takes over a second; we hide it with pre-voiced banks and pre-fetching so the reaction lands while the moment is still happening.
+- **Reading a fist without training a model.** Hands are all different, and a half-open hand is surprisingly hard to call. Getting it steady enough that the game didn't pause by accident took a lot of tuning.
+- **Speed.** Four threads in Python on one laptop. pygame's built-in frame limiter only managed about 39 fps on a Mac, so we wrote our own.
+- **The silent game.** For a while every sound effect just didn't play. It turned out pygame was handing us the one audio channel we'd reserved for GRIP-9000's voice. We had to pick channels ourselves.
+- **Comic timing.** An AI that comments on everything is unbearable. Making him funny meant teaching him to shut up most of the time.
+- **Voice lag.** A live Claude line plus speech takes over a second, and a roast that lands late isn't funny. Pre-recorded lines and writing lines ahead of time fixed most of that.
 
 ## Accomplishments that we're proud of
-- [[NN]]% grip/open recognition across [[NNN]] live trials, 4 people, both hands, with no training.
-- [[NN]] ms from camera frame to game state; the rival reacts to bank-line moments in about [[N]] ms.
-- A rival with an actual personality and comic timing, not a chatbot bolted onto a game.
-- It's genuinely fun, and genuinely rude.
+- It actually feels like holding a sword. People's first reaction is to start swinging.
+- GRIP-9000 has real comic timing. He's funny, he's quick, and he gets under your skin.
+- The quick reactions play in well under a second, so he responds while the moment's still happening.
+- We built the whole thing in 24 hours with no trained model, just MediaPipe points and our own maths.
 
 ## What we learned
-- Pretrained landmarks plus a little geometry go a long way; you don't need to train a model to read a hand.
-- For a live agent, *when* to speak matters more than *what* to say.
-- Measure everything: our latency and reliability numbers changed what we fixed.
+- You can get a long way with some geometry on top of pretrained landmarks.
+- For a live AI, *when* it speaks matters more than *what* it says.
+- Sound sells everything. The game felt twice as good the moment the slashes started sounding sharp.
 
 ## What's next for GRIP-9000
-- Free-hand gesture moves (block, special attack).
-- Two-player duels, with GRIP-9000 commentating both.
-- A memory of your past runs so the roasts get personal.
+- Gesture moves with your free hand, like blocking or a special attack.
+- Two players at once, with GRIP-9000 commentating both.
+- Remembering you between sessions, so the roasts get personal.
 
 ## Built with
 `python` `pygame-ce` `opencv` `mediapipe` `numpy` `sqlite` `claude` `anthropic-api` `elevenlabs` `multithreading`
 
 ## Links
 - Code: https://github.com/AnanthIyer21/whack-26
-- Video (optional, not required by the rules): [[YouTube unlisted link]]
 
-## Team
-Aaron (vision), Pricysquirrl (game), RBadiadka7 (art and sound, reliability, demo), Ananth (integration, testing, the rival). **Add all four to the Devpost project.**
+## Credits
+Sound effects from CC0 packs on OpenGameArt (Juhani Junkala, rubberduck, artisticdude, StarNinjas, Vehicle). Font: Press Start 2P (SIL Open Font License). All art drawn by us.
 
-## Screenshots to upload (take on the demo laptop, `Cmd+Shift+4`)
-1. Mid-slash: sword drawn, fruit halves flying, combo popup.
-2. GRIP-9000 laughing after a bomb (explosion + speech bubble).
-3. The pause screen (open hand) with the Quit button.
-4. Game over screen with the final roast.
-5. `results/numbers_slide.png`.
-6. The vision debug window (skeleton, curl bars, blade).
+## Images to upload
+1. Mid-slash: sword out, fruit halves flying.
+2. GRIP-9000 laughing after a bomb.
+3. The pause screen.
+4. Game over with the roast.
+5. The party leaderboard.
+6. A photo of someone playing: fist up, screen behind.
