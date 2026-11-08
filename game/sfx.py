@@ -86,11 +86,28 @@ def play(name):
         return
     try:
         snd.set_volume(SFX_VOLUME * _duck)
-        ch = pygame.mixer.find_channel(True)  # force=True: steal the oldest if all are busy
-        if ch is not None and ch.id != shared.VOICE_CHANNEL:
-            ch.play(snd)
+        _pick_channel().play(snd)
     except pygame.error:
         pass
+
+
+_next_steal = 0
+
+
+def _pick_channel():
+    """A free channel other than the rival's voice channel; if all are busy, reuse them in turn.
+
+    Not pygame.mixer.find_channel(): in pygame-ce 2.5.8 it ignores set_reserved() and
+    returns channel 0, which would cut off GRIP-9000's voice.
+    """
+    global _next_steal
+    ids = [i for i in range(pygame.mixer.get_num_channels()) if i != shared.VOICE_CHANNEL]
+    for i in ids:
+        ch = pygame.mixer.Channel(i)
+        if not ch.get_busy():
+            return ch
+    _next_steal = (_next_steal + 1) % len(ids)
+    return pygame.mixer.Channel(ids[_next_steal])
 
 
 def on_event(type_):
