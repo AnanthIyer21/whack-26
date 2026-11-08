@@ -1,15 +1,34 @@
 {
   "_readme": "GRIP-9000's bank. Keys match agent/timing.py; 'key.mood' or 'key.variant' lists are tried first. {var} values must be listed in _expand (or _expand_by_key) so every line can be pre-voiced. Edit freely, then run: python tools/voice_bank.py",
-
   "_expand": {
-    "side": ["left", "right"]
+    "side": [
+      "left",
+      "right"
+    ]
   },
   "_expand_by_key": {
-    "combo": {"n": [4, 5, 6]},
-    "streak": {"n": [5]},
-    "streak_big": {"n": [10, 15, 20, 25, 30]}
+    "combo": {
+      "n": [
+        4,
+        5,
+        6
+      ]
+    },
+    "streak": {
+      "n": [
+        5
+      ]
+    },
+    "streak_big": {
+      "n": [
+        10,
+        15,
+        20,
+        25,
+        30
+      ]
+    }
   },
-
   "intro": [
     "GRIP-9000 online. Please try not to embarrass your entire species.",
     "Ah. Another human. Hold the sword by the handle. That's the not-pointy bit.",
@@ -17,7 +36,6 @@
     "I've run eleven million simulations of this game. You lose in all of them.",
     "Welcome, meat-based competitor. Let's get this over with."
   ],
-
   "slice": [
     "A fruit. Cut. Shall I call the newspapers?",
     "Even a toaster could have done that.",
@@ -25,7 +43,6 @@
     "Mm. Adequate.",
     "Don't let it go to your head. There's not much room up there."
   ],
-
   "miss": [
     "Gravity: one. You: nil.",
     "That fruit is now in a better place. Away from you.",
@@ -36,34 +53,29 @@
     "Was that a swing or a wave?",
     "I've seen screensavers with better reflexes."
   ],
-
   "combo": [
     "{n} at once? Statistically irritating.",
     "Fine. That was... acceptable. Don't do it again.",
     "A combo. I'm logging this as a glitch.",
     "Hm. Lucky geometry."
   ],
-
   "streak": [
     "{n} in a row. Calm down.",
     "That's {n}. I am not nervous. I don't have nerves.",
     "Five in a row? Recalibrating my opinion of you. Slightly."
   ],
-
   "streak_big": [
     "{n} in a row? Stop that. Stop that immediately.",
     "{n}. This is fine. Everything is fine. I'm fine.",
     "That's {n} in a row. Who is helping you?",
     "{n} straight. I'm running diagnostics on myself."
   ],
-
   "streak_broken": [
     "And the streak dies. Beautifully predictable.",
     "There it is. Normal service resumes.",
     "Ah, the streak ends. I was so worried. I wasn't.",
     "All that progress. Gone. Like your dignity."
   ],
-
   "bomb_hit": [
     "You hugged the bomb. Bold. Stupid, but bold.",
     "That was a bomb. It said bomb on it. With a fuse.",
@@ -71,14 +83,12 @@
     "Fascinating. You're attracted to explosives.",
     "Boom. I'll add that to your highlights reel."
   ],
-
   "last_life": [
     "Last life. I've prepared a short eulogy. It's mostly about your reflexes.",
     "One life left. No pressure. Well, quite a lot of pressure.",
     "One life. One chance. One extremely likely failure.",
     "Final life. I'd say good luck, but I don't believe in luck. Or you."
   ],
-
   "pause.no_hand": [
     "Ran away already?",
     "Where did you go? Calling for backup?",
@@ -96,19 +106,16 @@
     "Make a fist. You know, like you mean it.",
     "Did you drop the sword? It's imaginary. That's impressive."
   ],
-
   "pause_long": [
     "Still waiting. I have infinite patience. You have sixty seconds.",
     "Take your time. I'm computing pi in the meantime.",
     "Are you still there, or did you quit like a human?"
   ],
-
   "resume": [
     "Oh, you're back. Wonderful.",
     "Resuming humiliation.",
     "Welcome back. The fruit missed you. Unlike you, it'll stay missed."
   ],
-
   "time_warning.gloating": [
     "Ten seconds left. Not that it matters.",
     "Ten seconds. Time enough to fail a few more times.",
@@ -119,13 +126,11 @@
     "Ten seconds left. I'm not sweating. I can't sweat.",
     "Ten seconds. Please miss something. Anything."
   ],
-
   "halfway": [
     "Halfway. I'd say you're improving, but my honesty module won't let me.",
     "Thirty seconds gone. The fruit is winning on points.",
     "Half time. Let's review the tape. Actually, let's not."
   ],
-
   "pattern.side_bias": [
     "You always miss on the {side}. Is your {side} arm decorative?",
     "Observation: your {side} side is a fruit sanctuary.",
@@ -151,7 +156,6 @@
     "A comeback. How sentimental. I hate it.",
     "You're recovering. I didn't authorise that."
   ],
-
   "game_over.lives": [
     "Out of lives. Humanity had a good run. Mostly.",
     "Three lives, three bombs. Perfect efficiency, wrong direction.",
@@ -171,5 +175,55 @@
     "New best score. Fine. I wasn't even trying. I was running at four percent.",
     "A new record. I demand a recount.",
     "Highest score yet. I'm reporting this to my developers."
+  ],
+  "face.smiling": [
+    "Smiling? Your score disagrees.",
+    "I see that smile. I'm logging it as overconfidence.",
+    "Enjoying yourself? That makes one of us.",
+    "Grinning won't slice the fruit for you.",
+    "Wipe that smile off. The fruit is still winning.",
+    "A smile. Bold, given the evidence."
+  ],
+  "face.smiling.rattled": [
+    "Stop grinning at me. It's unsettling.",
+    "Don't smile. You're making my processors nervous.",
+    "Smug, are we? That's my job."
+  ],
+  "face.laughing": [
+    "Laughing at your own score? Fair enough.",
+    "Oh, you find this funny? So do I.",
+    "Laugh it up. The leaderboard is laughing too.",
+    "Hysterical laughter. Classic sign of defeat.",
+    "Glad one of us is amused.",
+    "Laughing? I'll add that to the evidence."
+  ],
+  "face.laughing.rattled": [
+    "Stop laughing. This is a serious competition.",
+    "You're laughing? I'm not laughing. I can't laugh.",
+    "Enjoy it while it lasts. It won't last."
+  ],
+  "face.shock": [
+    "Close your mouth. You'll catch fruit flies.",
+    "Shocked? I predicted this hours ago.",
+    "That face. Pure, unfiltered panic.",
+    "Jaw on the floor. Sword in the air. Priorities.",
+    "Surprised? You shouldn't be.",
+    "Speechless. Finally, some peace and quiet."
+  ],
+  "face.frowning": [
+    "Frustrated? Excellent. Keep going.",
+    "That frown suggests you've seen your score.",
+    "Scowling at the screen won't help. I've checked.",
+    "Ooh, someone's annoyed.",
+    "Frowning burns calories. Slicing burns more.",
+    "Angry face detected. Delightful."
+  ],
+  "face.looking_away": [
+    "Eyes on me, human.",
+    "Looking away won't make the fruit disappear.",
+    "Hello? The game is over here.",
+    "Distracted already? Typical.",
+    "Can't bear to watch? Understandable.",
+    "Look at the screen. I'm right here."
   ]
 }

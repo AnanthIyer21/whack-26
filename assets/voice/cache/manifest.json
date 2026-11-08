@@ -115,6 +115,11 @@
    "file": "a08db248597ad4ff.mp3",
    "key": "game_over.new_best"
   },
+  "A smile. Bold, given the evidence.": {
+   "duration": 4.04,
+   "file": "9fdbbbddc3895bb5.mp3",
+   "key": "face.smiling"
+  },
   "Ah, the streak ends. I was so worried. I wasn't.": {
    "duration": 5.573,
    "file": "c9df91ed7a155f03.mp3",
@@ -134,6 +139,11 @@
    "duration": 3.808,
    "file": "30af4ae4ab9965de.mp3",
    "key": "streak_broken"
+  },
+  "Angry face detected. Delightful.": {
+   "duration": 2.647,
+   "file": "6256ca6e2a5afd98.mp3",
+   "key": "face.frowning"
   },
   "Another one escapes on the left. They're forming a union.": {
    "duration": 4.226,
@@ -165,15 +175,45 @@
    "file": "ac4cf230c786ea94.mp3",
    "key": "pause.two_hands"
   },
+  "Can't bear to watch? Understandable.": {
+   "duration": 2.601,
+   "file": "66767de18aef47f2.mp3",
+   "key": "face.looking_away"
+  },
+  "Close your mouth. You'll catch fruit flies.": {
+   "duration": 3.251,
+   "file": "f7715add30d7f506.mp3",
+   "key": "face.shock"
+  },
   "Did you drop the sword? It's imaginary. That's impressive.": {
    "duration": 5.108,
    "file": "60bef1f535879c1c.mp3",
    "key": "pause.not_gripping"
   },
+  "Distracted already? Typical.": {
+   "duration": 1.997,
+   "file": "6fe322ddb8e84da7.mp3",
+   "key": "face.looking_away"
+  },
   "Don't let it go to your head. There's not much room up there.": {
    "duration": 4.133,
    "file": "748323fcc09b9b66.mp3",
    "key": "slice"
+  },
+  "Don't smile. You're making my processors nervous.": {
+   "duration": 4.18,
+   "file": "a657b20bc395cfa9.mp3",
+   "key": "face.smiling.rattled"
+  },
+  "Enjoy it while it lasts. It won't last.": {
+   "duration": 3.483,
+   "file": "95ad291372abeda8.mp3",
+   "key": "face.laughing.rattled"
+  },
+  "Enjoying yourself? That makes one of us.": {
+   "duration": 2.415,
+   "file": "f3ebd25a73a5cdcb.mp3",
+   "key": "face.smiling"
   },
   "Even a toaster could have done that.": {
    "duration": 2.276,
@@ -195,6 +235,11 @@
    "file": "cb1534e03d7f8443.mp3",
    "key": "bomb_hit"
   },
+  "Eyes on me, human.": {
+   "duration": 1.672,
+   "file": "82d967fd693f8db6.mp3",
+   "key": "face.looking_away"
+  },
   "Fascinating. You're attracted to explosives.": {
    "duration": 3.529,
    "file": "0e5cb5382b0d16b4.mp3",
@@ -215,6 +260,16 @@
    "file": "a9018428fc6e71fe.mp3",
    "key": "streak"
   },
+  "Frowning burns calories. Slicing burns more.": {
+   "duration": 4.319,
+   "file": "0f9a80a29c2a1890.mp3",
+   "key": "face.frowning"
+  },
+  "Frustrated? Excellent. Keep going.": {
+   "duration": 3.065,
+   "file": "1423a7e49935fe5d.mp3",
+   "key": "face.frowning"
+  },
   "GRIP-9000 online. Please try not to embarrass your entire species.": {
    "duration": 6.084,
    "file": "97e0a0295b5aa0bb.mp3",
@@ -225,10 +280,20 @@
    "file": "b82e9da2c3e06979.mp3",
    "key": "game_over.lives"
   },
+  "Glad one of us is amused.": {
+   "duration": 1.672,
+   "file": "aff448b1abf01803.mp3",
+   "key": "face.laughing"
+  },
   "Gravity: one. You: nil.": {
    "duration": 2.322,
    "file": "4838e3fce69999ee.mp3",
    "key": "miss"
+  },
+  "Grinning won't slice the fruit for you.": {
+   "duration": 2.415,
+   "file": "bd5a02135f925883.mp3",
+   "key": "face.smiling"
   },
   "Grip. It's in my name. Use it.": {
    "duration": 3.622,
@@ -255,6 +320,11 @@
    "file": "e60627e2a1477313.mp3",
    "key": "pattern.slump"
   },
+  "Hello? The game is over here.": {
+   "duration": 2.136,
+   "file": "f519b8034e8138ae.mp3",
+   "key": "face.looking_away"
+  },
   "Hiding won't save you. It just delays the inevitable.": {
    "duration": 4.319,
    "file": "8c86b209b7877ae3.mp3",
@@ -269,6 +339,16 @@
    "duration": 1.904,
    "file": "e5c732e61e3bcbd5.mp3",
    "key": "combo"
+  },
+  "Hysterical laughter. Classic sign of defeat.": {
+   "duration": 3.855,
+   "file": "3996d2f381e5ffb4.mp3",
+   "key": "face.laughing"
+  },
+  "I see that smile. I'm logging it as overconfidence.": {
+   "duration": 4.319,
+   "file": "2db4ea4f0e84b72a.mp3",
+   "key": "face.smiling"
   },
   "I've run eleven million simulations of this game. You lose in all of them.": {
    "duration": 5.248,
@@ -290,15 +370,45 @@
    "file": "6b0b91db81c31f05.mp3",
    "key": "pause.two_hands"
   },
+  "Jaw on the floor. Sword in the air. Priorities.": {
+   "duration": 4.783,
+   "file": "5e3d987af386e52b.mp3",
+   "key": "face.shock"
+  },
   "Last life. I've prepared a short eulogy. It's mostly about your reflexes.": {
    "duration": 6.687,
    "file": "c73108b80f5094ee.mp3",
    "key": "last_life"
   },
+  "Laugh it up. The leaderboard is laughing too.": {
+   "duration": 3.808,
+   "file": "f3f69ab980c68213.mp3",
+   "key": "face.laughing"
+  },
+  "Laughing at your own score? Fair enough.": {
+   "duration": 3.204,
+   "file": "652b23e04cafcef8.mp3",
+   "key": "face.laughing"
+  },
+  "Laughing? I'll add that to the evidence.": {
+   "duration": 2.926,
+   "file": "eb7dc8a0d64c8323.mp3",
+   "key": "face.laughing"
+  },
   "Long silence from your sword. Matches the silence from your fans.": {
    "duration": 5.944,
    "file": "3ff6ec0cf999fc8f.mp3",
    "key": "pattern.slump"
+  },
+  "Look at the screen. I'm right here.": {
+   "duration": 2.926,
+   "file": "b231de1fffd4d3ce.mp3",
+   "key": "face.looking_away"
+  },
+  "Looking away won't make the fruit disappear.": {
+   "duration": 2.786,
+   "file": "f5e3b41b59afe59f.mp3",
+   "key": "face.looking_away"
   },
   "Lost a life and you're still going? That's... annoying.": {
    "duration": 5.898,
@@ -345,6 +455,11 @@
    "file": "852629bba5e32fc2.mp3",
    "key": "pattern.side_bias"
   },
+  "Oh, you find this funny? So do I.": {
+   "duration": 3.344,
+   "file": "4ce3e75bfc5cb176.mp3",
+   "key": "face.laughing"
+  },
   "Oh, you're back. Wonderful.": {
    "duration": 2.183,
    "file": "28cc339bc48cd708.mp3",
@@ -359,6 +474,11 @@
    "duration": 5.248,
    "file": "aaa1fdfe4a565238.mp3",
    "key": "last_life"
+  },
+  "Ooh, someone's annoyed.": {
+   "duration": 1.393,
+   "file": "84617450916088d1.mp3",
+   "key": "face.frowning"
   },
   "Open hand? You're waving, not fighting.": {
    "duration": 3.901,
@@ -395,15 +515,55 @@
    "file": "bc1bdef99129e026.mp3",
    "key": "resume"
   },
+  "Scowling at the screen won't help. I've checked.": {
+   "duration": 3.576,
+   "file": "52330324adadf6d6.mp3",
+   "key": "face.frowning"
+  },
+  "Shocked? I predicted this hours ago.": {
+   "duration": 3.204,
+   "file": "0252681c98042414.mp3",
+   "key": "face.shock"
+  },
   "Sixty seconds of effort. I've logged it under comedy.": {
    "duration": 3.994,
    "file": "6bbdcfb9f7a3b535.mp3",
    "key": "game_over.timer"
   },
+  "Smiling? Your score disagrees.": {
+   "duration": 3.344,
+   "file": "acc59f7956664562.mp3",
+   "key": "face.smiling"
+  },
+  "Smug, are we? That's my job.": {
+   "duration": 2.833,
+   "file": "1a8940364bacd2df.mp3",
+   "key": "face.smiling.rattled"
+  },
+  "Speechless. Finally, some peace and quiet.": {
+   "duration": 3.669,
+   "file": "dfe0b72d4a29e349.mp3",
+   "key": "face.shock"
+  },
   "Still waiting. I have infinite patience. You have sixty seconds.": {
    "duration": 5.387,
    "file": "d1d123442c9cab3b.mp3",
    "key": "pause_long"
+  },
+  "Stop grinning at me. It's unsettling.": {
+   "duration": 2.972,
+   "file": "38cc99e6011a61ac.mp3",
+   "key": "face.smiling.rattled"
+  },
+  "Stop laughing. This is a serious competition.": {
+   "duration": 3.111,
+   "file": "d9a7314ededecc6d.mp3",
+   "key": "face.laughing.rattled"
+  },
+  "Surprised? You shouldn't be.": {
+   "duration": 2.136,
+   "file": "86f0af872753f577.mp3",
+   "key": "face.shock"
   },
   "Take your time. I'm computing pi in the meantime.": {
    "duration": 4.087,
@@ -439,6 +599,16 @@
    "duration": 4.737,
    "file": "29b6fb6b04b93a6f.mp3",
    "key": "time_warning.gloating"
+  },
+  "That face. Pure, unfiltered panic.": {
+   "duration": 3.483,
+   "file": "f9ed952ad6051f12.mp3",
+   "key": "face.shock"
+  },
+  "That frown suggests you've seen your score.": {
+   "duration": 2.74,
+   "file": "368b7a173e20aaee.mp3",
+   "key": "face.frowning"
   },
   "That fruit is now in a better place. Away from you.": {
    "duration": 3.855,
@@ -545,6 +715,11 @@
    "file": "113a8745ee8224da.mp3",
    "key": "pause.no_hand"
   },
+  "Wipe that smile off. The fruit is still winning.": {
+   "duration": 4.458,
+   "file": "6fbec7091deddfe7.mp3",
+   "key": "face.smiling"
+  },
   "You always miss on the left. Is your left arm decorative?": {
    "duration": 4.319,
    "file": "b82e58bb3dbb975d.mp3",
@@ -574,6 +749,11 @@
    "duration": 4.133,
    "file": "3a19e9dec3be87e4.mp3",
    "key": "game_over.quit"
+  },
+  "You're laughing? I'm not laughing. I can't laugh.": {
+   "duration": 5.294,
+   "file": "244af2d8f33451e3.mp3",
+   "key": "face.laughing.rattled"
   },
   "You're recovering. I didn't authorise that.": {
    "duration": 3.344,

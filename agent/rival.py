@@ -62,6 +62,7 @@ MOMENTS = {
     "miss": "a fruit just fell off the bottom of the screen uncut",
     "halfway": "halfway through the run; give a state-of-the-match comment",
     "pattern": "you have noticed a habit in how they play; call it out",
+    "face": "react to the player's facial expression right now (expression only, never their looks)",
 }
 
 
@@ -267,7 +268,10 @@ class Rival:
 
     def _live_job(self, token, decision, stats, extra):
         words = FINAL_WORDS if decision.final else LINE_WORDS
-        text = self.writer.write(MOMENTS.get(decision.key, decision.key), decision.mood, stats, extra, max_words=words)
+        moment = MOMENTS.get(decision.key, decision.key)
+        if decision.key == "face_combo":
+            moment = decision.vars.get("context", MOMENTS["face"]) + "; react to that (their expression, never their looks)"
+        text = self.writer.write(moment, decision.mood, stats, extra, max_words=words)
         sound = None
         if text is not None:
             sound = self.tts.synth(text)

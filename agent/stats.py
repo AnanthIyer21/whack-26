@@ -24,6 +24,9 @@ class Stats:
         self.score_estimate = 0
         self.final_score = None
         self.misses = {"left": 0, "right": 0}
+        self.miss_times = []
+        self.last_bomb_t = None
+        self.expressions = {}           # face extension: expression -> times seen this run
         self.bombs = 0
         self.bomb_times = []
         self.current_streak = 0
@@ -64,6 +67,7 @@ class Stats:
             self.last_slice_t = t
         elif kind == shared.MISS:
             self.misses[event["side"]] += 1
+            self.miss_times.append(t)
             self.current_streak = 0
         elif kind == shared.COMBO:
             if event["n"] > self.best_combo:
@@ -76,6 +80,7 @@ class Stats:
         elif kind == shared.BOMB_HIT:
             self.bombs += 1
             self.bomb_times.append(t)
+            self.last_bomb_t = t
             self.current_streak = 0
         elif kind == shared.LIFE_LOST:
             self.lives = event["lives_left"]
@@ -92,6 +97,9 @@ class Stats:
             self.paused = False
             self.pause_reason = None
             self.last_resume_t = t
+        elif kind == shared.FACE:
+            name = event["expression"]
+            self.expressions[name] = self.expressions.get(name, 0) + 1
         elif kind == shared.GAME_OVER:
             self.running = False
             self.over = True
@@ -111,6 +119,17 @@ class Stats:
             return 0.0
         return left
 
+    def misses_within(self, now, seconds):
+        count = 0
+        for t in self.miss_times:
+            if now - t <= seconds:
+                count += 1
+        return count
+
+    def winning(self):
+        """Doing well enough that GRIP-9000 gets rattled rather than gloating."""
+        return self.lives >= shared.LIVES and self.current_streak >= 5
+
     def total_misses(self):
         return self.misses["left"] + self.misses["right"]
 
@@ -128,7 +147,7 @@ class Stats:
     def snapshot(self, now):
         """A compact, JSON-friendly view for Claude and for logs."""
         accuracy = self.accuracy()
-        return {
+        snap = {
             "score": self.score(),
             "slices": self.slices,
             "misses_left": self.misses["left"],
@@ -145,6 +164,12 @@ class Stats:
             "run_number_this_session": self.runs_this_session,
             "recent": list(self.recent),
         }
+        if self.expressions:
+            snap["expressions_this_run"] = dict(self.expressions)
+        face = shared.get_face_state()
+        if face.face_visible and face.calibrated and now - face.t < 1.0 and face.expression != "neutral":
+            snap["player_expression"] = face.expression
+        return snap
 
     @staticmethod
     def _short(event):
@@ -157,4 +182,6 @@ class Stats:
             return "pause(" + event["reason"] + ")"
         if kind == shared.LIFE_LOST:
             return "life_lost(" + str(event["lives_left"]) + " left)"
+        if kind == shared.FACE:
+            return "face(" + event["expression"] + ")"
         return kind

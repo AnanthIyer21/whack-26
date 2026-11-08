@@ -39,6 +39,9 @@ RULES = {
     "pattern":            (35, 20.0, 1.00, False, "claude"),
     "miss":               (30, 5.0, 0.45, False, "prefetch"),
     "intro":              (20, 0.0, 1.00, False, "bank"),
+    # face extension (--face): cooldowns are handled per expression, see FACE_COOLDOWN_*
+    "face":               (33, 0.0, 0.70, False, "bank"),
+    "face_combo":         (45, 0.0, 1.00, True, "claude"),   # face + game context; may wait for the floor
     "slice":              (10, 12.0, 0.10, False, "bank"),
 }
 
@@ -49,6 +52,9 @@ PAUSE_LONG = 8.0            # one follow-up taunt if still paused after this
 RESUME_HUSH = 2.0           # gameplay heckles suppressed this long after resume
 HUSH_BELOW_PRIORITY = 60    # ...for candidates below this priority
 INTERRUPT_MIN_PRIORITY = 85 # only bomb, last life and game over may cut a line off mid-sentence
+FACE_COOLDOWN_EACH = 25.0   # the same expression is mentioned at most once per 25 s
+FACE_COOLDOWN_ANY = 10.0    # any face line at most once per 10 s
+COMBO_WAIT = 4.0            # a face combo may wait this long for the current line to end (the only thing that waits)
 STREAK_MILESTONES = (5, 10, 15, 20, 25, 30)
 BIG_STREAK = 10
 MIN_COMBO = 4
@@ -96,6 +102,7 @@ class TimingEngine:
         self.pending_pause_at = None
         self.pause_line_spoken = False
         self.pause_long_done = False
+        self.pending_combo = None       # {"vars", "deadline"}: a face combo waiting for the floor
 
     # ------------------------------------------------------------------ events
 
@@ -109,6 +116,8 @@ class TimingEngine:
         if self.over:
             self.log(now, "drop " + kind + ": run is over")
             return None
+        if kind == shared.FACE:
+            return self._on_face(event, now)
         if kind == shared.SWORD_DRAWN:
             return self._consider("intro", {}, now)
         if kind == shared.GAME_OVER:
@@ -175,7 +184,20 @@ class TimingEngine:
         detector.mark_spoken(decision.vars["pattern"]); unspoken patterns are offered again.
         """
         if self.over:
+            self.pending_combo = None
             return None
+
+        if self.pending_combo is not None:
+            if now > self.pending_combo["deadline"] or self.stats.paused or not self.stats.running:
+                self.log(now, "drop face_combo: waited " + str(COMBO_WAIT) + " s, moment passed")
+                self.pending_combo = None
+            elif not self.is_speaking(now):
+                vars_ = self.pending_combo["vars"]
+                self.pending_combo = None
+                decision = self._consider("face_combo", vars_, now)
+                if decision is not None:
+                    self._face_spoken(vars_["expression"], now)
+                    return decision
 
         if self.pending_bomb_at is not None and now >= self.pending_bomb_at:
             self.pending_bomb_at = None
@@ -237,6 +259,60 @@ class TimingEngine:
     def is_speaking(self, now):
         return self.speaking_priority is not None and now < self.speaking_until
 
+    # ------------------------------------------------------------ face extension
+
+    def _on_face(self, event, now):
+        expression = event["expression"]
+        if not self.stats.running or self.stats.paused:
+            self.log(now, "drop face(" + expression + "): not in play")
+            return None
+        last_any = self.last_spoken.get("face_any")
+        if last_any is not None and now - last_any < FACE_COOLDOWN_ANY:
+            self.log(now, "drop face(" + expression + "): any-face cooldown")
+            return None
+        last_same = self.last_spoken.get("face:" + expression)
+        if last_same is not None and now - last_same < FACE_COOLDOWN_EACH:
+            self.log(now, "drop face(" + expression + "): cooldown for this expression")
+            return None
+
+        context = self._face_context(expression, now)
+        if context is not None:
+            vars_ = {"expression": expression, "context": context}
+            if self.is_speaking(now):
+                self.pending_combo = {"vars": vars_, "deadline": now + COMBO_WAIT}
+                self.log(now, "face combo (" + expression + ") waits up to " + str(COMBO_WAIT) + " s for the floor")
+                return None
+            decision = self._consider("face_combo", vars_, now)
+        else:
+            decision = self._consider("face", {"expression": expression}, now)
+        if decision is not None:
+            self._face_spoken(expression, now)
+        return decision
+
+    def _face_spoken(self, expression, now):
+        self.last_spoken["face_any"] = now
+        self.last_spoken["face:" + expression] = now
+
+    def _face_context(self, expression, now):
+        """A sentence for Claude when the face clashes with the game state, else None."""
+        s = self.stats
+        since_bomb = None if s.last_bomb_t is None else now - s.last_bomb_t
+        if expression in ("smiling", "laughing"):
+            if since_bomb is not None and since_bomb <= 4.0:
+                return "the player is " + expression + " right after slicing a bomb and losing a life"
+            if s.lives == 1:
+                return "the player is " + expression + " while on their very last life"
+        if expression == "shock" and since_bomb is not None and since_bomb <= 3.0:
+            return "the player's mouth just dropped open in shock after slicing a bomb"
+        if expression == "frowning":
+            recent = s.misses_within(now, 15.0)
+            if recent >= 3:
+                return "the player is frowning after letting " + str(recent) + " fruit fall in the last 15 seconds"
+        if expression == "looking_away" and s.current_streak >= 3:
+            return ("the player just looked away from the screen in the middle of a "
+                    + str(s.current_streak) + "-slice streak")
+        return None
+
     # --------------------------------------------------------------- the gates
 
     def _consider(self, key, vars_, now):
@@ -280,6 +356,13 @@ class TimingEngine:
         return Decision(key, priority, self._mood(key, vars_), source, vars_, interrupt, key == "game_over", now)
 
     def _mood(self, key, vars_):
+        if key in ("face", "face_combo"):
+            expression = vars_.get("expression")
+            if expression in ("smiling", "laughing"):
+                return "rattled" if self.stats.winning() else "gloating"
+            if expression == "looking_away":
+                return "smug"
+            return "gloating"
         if key in ("streak", "streak_big", "combo"):
             return "rattled"
         if key == "pattern" and vars_.get("pattern") == "comeback":
