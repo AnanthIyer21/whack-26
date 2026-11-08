@@ -16,6 +16,7 @@ from . import config as C
 from .background import CameraBackground
 from .events import Emitter
 from .input import HandInput, MouseInput, Viewport
+from . import sfx
 
 
 class App:
@@ -129,6 +130,7 @@ class App:
 
             self._read_rival(now)
             self.scene.update(dt, now)
+            sfx.update(self)              # music per scene, ducking, Sound On/Off (RBadiadka7)
             self.glow.fill((0, 0, 0, 0))
             self.scene.draw(self.screen, now)
             self._draw_corner_tags()
