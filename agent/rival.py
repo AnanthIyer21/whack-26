@@ -231,6 +231,9 @@ class Rival:
                             "decided_t": decided_t}
             self.engine.line_started(decision, deadline + 0.5, decided_t)   # hold the floor while we wait
             stats = self.stats.snapshot(decided_t)
+            if decision.key in ("face", "face_combo"):
+                # The combo's own expression wins over a possibly stale FaceState snapshot.
+                stats["player_expression"] = decision.vars.get("expression")
             extra = self._details(decision)
             self.pool.submit(self._live_job, self.token, decision, stats, extra)
             return
