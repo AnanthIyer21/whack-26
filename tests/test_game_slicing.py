@@ -56,7 +56,7 @@ def test_large_rotation_is_substepped_and_covers_arc():
 
 def test_long_gap_never_cuts():
     b = drawn_blade()
-    b.update(sample(1200, 400, -math.pi / 2, 0.5), 1.5)   # 0.5 s gap: hitch
+    b.update(sample(1200, 400, -math.pi / 2, 1.2), 2.2)   # 1.2 s gap: the hand was really gone
     assert b.take_sweeps() == []
 
 
@@ -95,12 +95,12 @@ def test_too_long_or_teleport_is_never_bridged():
     b = drawn_blade()
     b.update(sample(700, 400, -math.pi / 2, 1 / 30), 1.03)
     b.take_sweeps()
-    b.update(sample(1000, 400, -math.pi / 2, 0.6), 1.6)    # 0.57 s: genuinely lost
+    b.update(sample(1000, 400, -math.pi / 2, 1.2), 2.2)    # 1.17 s: genuinely lost
     assert b.take_sweeps() == []
     b2 = drawn_blade()
     b2.update(sample(660, 400, -math.pi / 2, 1 / 30), 1.03)
     b2.take_sweeps()
-    b2.update(sample(-500, 400, -math.pi / 2, 0.2), 1.2)   # jumped > 0.8 of the width: glitch
+    b2.update(sample(-700, 400, -math.pi / 2, 0.2), 1.2)   # jumped > 0.95 of the width: glitch
     assert b2.take_sweeps() == []
 
 

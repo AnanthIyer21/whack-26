@@ -10,19 +10,23 @@ MAX_DT = 0.05             # physics never steps more than 50 ms at once (stalls 
 BLADE_LENGTH_FALLBACK = 0.30   # fraction of screen height; the real value comes from shared/
 DRAW_TIME = 0.15               # seconds for the blade to grow out of the fist
 TRAIL_TIME = 0.12              # seconds of swept ribbon kept behind the blade
-CUT_SPEED = 1.2                # tip speed needed to cut, in screen heights per second
+CUT_SPEED = 0.7                # tip speed needed to cut a FRUIT, in screen heights per second
+BOMB_CUT_SPEED = 1.2           # bombs need a real slash to go off (higher, so you don't nudge one)
 MAX_SAMPLE_GAP = 0.10          # normal gap between tracking samples; longer = a lag spike / dropout
-MAX_BRIDGE_GAP = 0.45          # lag spikes and short dropouts up to this long are BRIDGED: the blade
-                               # is swept along the straight path, so fruit in between still get cut
-MAX_BRIDGE_DIST = 0.8          # ...unless the fist "jumped" further than this (fraction of width):
+MAX_BRIDGE_GAP = 1.0          # lag spikes and dropouts up to this long are BRIDGED: the blade is
+                               # swept along the path, so fruit in between still get cut (a lost
+                               # hand pauses the game at ~0.95 s anyway)
+MAX_BRIDGE_DIST = 0.95         # ...unless the fist "jumped" further than this (fraction of width):
                                # that's a tracking glitch, not a swing
+LAG_SUBSTEP_PX = 40            # long bridged paths are split into steps this long, each checked
+                               # against where the fruit WAS at that moment
 MAX_SUBSTEP_ANGLE = math.radians(15)  # big rotations are split into steps no larger than this
 
 # Hand tracking
 HAND_STALE = 0.30              # HandState older than this counts as "no hand"
 # Swing prediction through tracking dropouts (game/predict.py)
 PREDICT_MAX = 0.35             # keep the blade flying this long after the last real detection
-                               # (then it hovers, still armed, until MAX_BRIDGE_GAP)
+HOVER_MAX = 0.45               # then it hovers, still armed, until this long after it
 PREDICT_DAMPING = 2.5          # how fast a predicted swing slows down (per second)
 PREDICT_MIN_SPEED = 0.4        # only predict if the fist was moving this fast (screen heights/s)
 PREDICT_MIN_SPIN = 4.0         # ...or the blade was turning this fast (radians/s)

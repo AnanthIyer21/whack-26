@@ -169,6 +169,7 @@ class PlayScene:
             self.objects += self.spawner.update(dt, min(self.elapsed, self.run_len), self.run_len)
         for o in self.objects:
             o.step(dt)
+            o.remember(now)
             if o.fell_off(o.radius):
                 o.dead = True
                 if not o.is_bomb:
@@ -231,10 +232,14 @@ class PlayScene:
         sweeps = self.blade.take_sweeps()
         if self.blast and not self.blast.boomed:
             return                        # no cutting while the bomb winds up
+        # Fruit cut at a lower speed than bombs (so you never blow up from a nudge).
         # Lag sweeps (tracking dropped and we bridged/predicted the path) are estimates, so they
-        # get room for error: a lower speed bar, fatter fruit hitboxes, and SMALLER bombs.
-        fast = [sw for sw in sweeps
-                if sw.speed >= C.CUT_SPEED * (C.LAG_SPEED_FACTOR if sw.bridged else 1.0)]
+        # get room for error: a lower speed bar, fatter fruit hitboxes, SMALLER bombs, and fruit
+        # are also checked where they WERE when the blade passed (they move during the gap).
+        def fruit_speed(sw):
+            return C.CUT_SPEED * (C.LAG_SPEED_FACTOR if sw.bridged else 1.0)
+
+        fast = [sw for sw in sweeps if sw.speed >= fruit_speed(sw)]
         if not fast:
             return
         cut_any = False
@@ -243,10 +248,17 @@ class PlayScene:
                 continue
             for sw in fast:
                 if o.is_bomb:
+                    if sw.speed < C.BOMB_CUT_SPEED:
+                        continue
                     r = o.hit_radius * (C.LAG_BOMB_FACTOR if sw.bridged else 1.0)
+                    hit = circle_hits_quad(o.x, o.y, r, sw.quad)
                 else:
                     r = o.radius + (C.LAG_HIT_PAD if sw.bridged else 0.0)
-                if circle_hits_quad(o.x, o.y, r, sw.quad):
+                    hit = circle_hits_quad(o.x, o.y, r, sw.quad)
+                    if not hit and sw.bridged:
+                        px, py = o.pos_at(sw.t)
+                        hit = circle_hits_quad(px, py, r, sw.quad)
+                if hit:
                     o.dead = o.cut = True
                     if o.is_bomb:
                         self._bomb_hit(o, now)
@@ -292,6 +304,7 @@ class PlayScene:
         self.freeze = 0.0
         had = self.score.swing
         lives = self.score.bomb()          # a bomb ends the swing (its combo still scores)
+        self.rival.laugh(now)              # GRIP-9000 cackles at you (bombs only)
         if had:
             self.fx.on_swing_end(None, now)
         self.hud.life_lost(lives, now)

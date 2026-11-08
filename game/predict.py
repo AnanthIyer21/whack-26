@@ -77,6 +77,7 @@ class SwingPredictor:
                         jump = math.hypot(raw.base[0] - a[1][0], raw.base[1] - a[1][1])
                         if jump > C.GLIDE_MIN_DIST:   # glide over instead of teleporting
                             self.glide = (now, a[1], a[2])
+                            self.glide_from_t = a[0]
                             self.mode = "glide"
                 self.hist.append((now, raw.base, raw.angle))
             if self.mode == "glide":
@@ -86,7 +87,11 @@ class SwingPredictor:
                     e = _ease(u)
                     base = (b0[0] + (raw.base[0] - b0[0]) * e, b0[1] + (raw.base[1] - b0[1]) * e)
                     angle = a0 + wrap_angle(raw.angle - a0) * e
-                    self.out = replace(raw, base=base, angle=angle, t=now, held=False, predicted=True)
+                    # the hand really travelled this path during the whole dropout, not in
+                    # these 80 ms: stamp each point with when it was (probably) there
+                    when = self.glide_from_t + (t0 - self.glide_from_t) * e
+                    self.out = replace(raw, base=base, angle=angle, t=now, held=False, predicted=True,
+                                       when=when)
                     self.anchor = (now, base, angle)
                     return self.out
                 self.mode = "live"
@@ -135,7 +140,7 @@ class SwingPredictor:
         if self.mode == "hover":
             # prediction used up: hover where it ended (still armed, not grey) until the
             # bridge window runs out, so a hand that comes back a little late glides on
-            if now - self.pred[0] <= C.MAX_BRIDGE_GAP and self.out is not None:
+            if now - self.pred[0] <= C.HOVER_MAX and self.out is not None:
                 return self.out
             self.mode = "lost"
 

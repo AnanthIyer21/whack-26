@@ -58,6 +58,7 @@ class GameOverScene:
 
     def update(self, dt, now):
         self.t += dt
+
         s = self.sample = self.app.poll_input(now)
         if self.t > 1.0 and self.hold.update(s.good, dt, self._over_button()):
             self._again()
