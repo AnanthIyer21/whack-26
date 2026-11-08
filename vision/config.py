@@ -20,8 +20,8 @@ USE_MJPG = sys.platform == "win32"
 MODEL_PATH = Path(__file__).resolve().parent / "models" / "hand_landmarker.task"
 MAX_HANDS = 2
 MIN_DETECTION_CONF = 0.5
-MIN_PRESENCE_CONF = 0.5
-MIN_TRACKING_CONF = 0.5
+MIN_PRESENCE_CONF = 0.25
+MIN_TRACKING_CONF = 0.25
 # MediaPipe's handedness label comes out the wrong way round on our mirrored
 # image (checked with the camera smoke test on Aaron's laptop, 2026-11-07:
 # right hand showed as "Left" with high confidence), so we flip it once.
