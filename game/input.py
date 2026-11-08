@@ -11,6 +11,7 @@ import time
 import pygame
 
 from . import config as C
+from .predict import SwingPredictor
 
 
 @dataclass
@@ -21,6 +22,9 @@ class HandSample:
     hands: int             # hands_in_frame (0, 1, 2); stale vision -> 0
     t: float               # time of the sample (time.monotonic())
     stale: bool = False
+    confidence: float = 1.0
+    held: bool = False     # vision is holding a lost hand (not a real detection this frame)
+    predicted: bool = False  # made up by the swing predictor (or gliding back): an estimate
 
     @property
     def good(self) -> bool:
@@ -87,6 +91,11 @@ class HandInput(InputSource):
         self.get_hand_state = get_hand_state
         self.viewport = viewport               # maps normalised camera coords -> screen px
         self._last = None
+        self._last_raw = None                  # (t, confidence, good) of the previous HandState
+        self.predictor = SwingPredictor()
+
+    def reset(self):
+        self.predictor.reset()
 
     def poll(self, now):
         hs = None
@@ -102,16 +111,27 @@ class HandInput(InputSource):
         t = getattr(hs, "t", 0.0)
         stale = t <= 0 or (now - t) > C.HAND_STALE
         bx, by = hs.blade_base
+        conf = float(getattr(hs, "confidence", 0.0))
+        gripping = bool(hs.sword_active)
+        # Vision's hold after losing the hand repeats the last confidence exactly; a real
+        # detection always changes it a little.
+        prev = self._last_raw
+        held = (prev is not None and t != prev[0] and prev[2] and gripping and conf > 0
+                and conf == prev[1])
+        if prev is None or t != prev[0]:
+            self._last_raw = (t, conf, gripping and not stale)
         sample = HandSample(
             base=self.viewport.norm_to_px(bx, by),
             angle=float(hs.blade_angle),
-            gripping=bool(hs.sword_active),
+            gripping=gripping,
             hands=0 if stale else int(hs.hands_in_frame),
             t=t,
             stale=stale,
+            confidence=conf,
+            held=held,
         )
         self._last = sample
-        return sample
+        return self.predictor.process(sample, now)
 
 
 class Viewport:

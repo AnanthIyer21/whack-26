@@ -231,15 +231,21 @@ class PlayScene:
         sweeps = self.blade.take_sweeps()
         if self.blast and not self.blast.boomed:
             return                        # no cutting while the bomb winds up
-        fast = [sw for sw in sweeps if sw.speed >= C.CUT_SPEED]
+        # Lag sweeps (tracking dropped and we bridged/predicted the path) are estimates, so they
+        # get room for error: a lower speed bar, fatter fruit hitboxes, and SMALLER bombs.
+        fast = [sw for sw in sweeps
+                if sw.speed >= C.CUT_SPEED * (C.LAG_SPEED_FACTOR if sw.bridged else 1.0)]
         if not fast:
             return
         cut_any = False
         for o in self.objects:
             if o.dead:
                 continue
-            r = o.hit_radius if o.is_bomb else o.radius
             for sw in fast:
+                if o.is_bomb:
+                    r = o.hit_radius * (C.LAG_BOMB_FACTOR if sw.bridged else 1.0)
+                else:
+                    r = o.radius + (C.LAG_HIT_PAD if sw.bridged else 0.0)
                 if circle_hits_quad(o.x, o.y, r, sw.quad):
                     o.dead = o.cut = True
                     if o.is_bomb:
@@ -405,7 +411,8 @@ class PlayScene:
         lines = [f"phase {self.phase} bad {self.bad_t:.2f}  blade {self.blade.state}  speed {self.blade.speed:4.2f} H/s "
                  f"({'CUTS' if self.blade.speed >= C.CUT_SPEED else 'slow'})",
                  f"objects {len(self.objects)} halves {len(self.halves)} particles {len(self.particles)} "
-                 f"elapsed {self.elapsed:5.1f}  lag bridges {self.blade.bridges}",
+                 f"elapsed {self.elapsed:5.1f}  lag bridges {self.blade.bridges}  predicted dropouts "
+                 f"{getattr(getattr(self.app.input, 'predictor', None), 'predictions', '-')}",
                  f"events sent {len(self.ev.log)} dropped {self.ev.dropped}  last: "
                  f"{self.ev.log[-1]['type'] if self.ev.log else '-'}"]
         if s:

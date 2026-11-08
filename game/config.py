@@ -20,6 +20,20 @@ MAX_SUBSTEP_ANGLE = math.radians(15)  # big rotations are split into steps no la
 
 # Hand tracking
 HAND_STALE = 0.30              # HandState older than this counts as "no hand"
+# Swing prediction through tracking dropouts (game/predict.py)
+PREDICT_MAX = 0.35             # keep the blade flying this long after the last real detection
+                               # (then it hovers, still armed, until MAX_BRIDGE_GAP)
+PREDICT_DAMPING = 2.5          # how fast a predicted swing slows down (per second)
+PREDICT_MIN_SPEED = 0.4        # only predict if the fist was moving this fast (screen heights/s)
+PREDICT_MIN_SPIN = 4.0         # ...or the blade was turning this fast (radians/s)
+PREDICT_VEL_WINDOW = 0.12      # measure the swing over this much recent tracking
+GLIDE_TIME = 0.08              # when the hand is found again, glide to it over this long
+GLIDE_MIN_DIST = 25            # (px) smaller corrections just snap
+# Room for error on "lag sweeps" (bridged gaps, predicted swings, gliding back): the path is a
+# best guess, so be generous to the player
+LAG_HIT_PAD = 45               # px added to every fruit's hitbox
+LAG_SPEED_FACTOR = 0.6         # cut at 60% of the normal speed bar
+LAG_BOMB_FACTOR = 0.6          # bombs shrink to 60%: a guessed path shouldn't blow you up
 PAUSE_GRACE = 0.50             # bad hand state must last this long before auto-pause
 START_COUNTDOWN = 1.5          # 3-2-1 before a run (0.5 s per number)
 RESUME_HOLD = 0.5              # after a pause: hold your fist this long (a ring fills round the katana)

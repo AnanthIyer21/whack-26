@@ -23,7 +23,8 @@ class Sweep:
     speed: float        # tip speed, screen heights per second
     direction: tuple    # unit vector of tip motion (juice sprays this way)
     angle: float        # blade angle at this substep (the cut line follows the blade)
-    bridged: bool = False   # filled in across a tracking lag / dropout
+    bridged: bool = False   # a "lag sweep": bridged across a tracking gap, or a predicted/
+                            # gliding estimate. The game is more forgiving with these.
 
 
 def _lerp(a, b, u):
@@ -33,8 +34,11 @@ def _lerp(a, b, u):
 class Blade:
     def __init__(self, length_frac):
         self.length = length_frac * C.H
-        self._sprite = make_katana(self.length).convert_alpha()
-        self._sprite_frozen = make_katana(self.length, frozen=True).convert_alpha()
+        self._sprite = make_katana(self.length)
+        self._sprite_frozen = make_katana(self.length, frozen=True)
+        if pygame.display.get_surface() is not None:   # fast blits once there's a window
+            self._sprite = self._sprite.convert_alpha()
+            self._sprite_frozen = self._sprite_frozen.convert_alpha()
         self.state = "sheathed"
         self.base = (C.W / 2, C.H / 2)
         self.angle = C.MOUSE_START_ANGLE
@@ -112,6 +116,7 @@ class Blade:
             return  # same vision frame as last time: nothing new (vision ~30 fps, game 60)
         self._last_t = sample.t
         self.base, self.angle = sample.base, sample.angle
+        was_predicted, self._last_predicted = getattr(self, "_last_predicted", False), sample.predicted
 
         self._trail.append((now, self.base, self.tip(now)))
         self._hist.append((sample.t, self.base, self.angle))
@@ -125,6 +130,7 @@ class Blade:
         gap = t1 - t0
         jump = math.hypot(b1[0] - b0[0], b1[1] - b0[1])
         bridged = gap > C.MAX_SAMPLE_GAP
+        lag = bridged or sample.predicted or was_predicted
         if gap <= 0 or gap > C.MAX_BRIDGE_GAP or (bridged and jump > C.MAX_BRIDGE_DIST * C.W):
             # Too long (or a tracking glitch that jumped across the screen): fresh start, no slash.
             self._hist = [self._hist[-1]]
@@ -160,7 +166,7 @@ class Blade:
             na = a0 + da * u
             quad = [prev_b, self.tip(base=prev_b, angle=prev_a),
                     self.tip(base=nb, angle=na), nb]
-            self._pending.append(Sweep(quad, self.speed, direction, na, bridged))
+            self._pending.append(Sweep(quad, self.speed, direction, na, lag))
             prev_b, prev_a = nb, na
 
     def take_sweeps(self):
