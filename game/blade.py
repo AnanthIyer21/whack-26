@@ -23,6 +23,7 @@ class Sweep:
     speed: float        # tip speed, screen heights per second
     direction: tuple    # unit vector of tip motion (juice sprays this way)
     angle: float        # blade angle at this substep (the cut line follows the blade)
+    bridged: bool = False   # filled in across a tracking lag / dropout
 
 
 def _lerp(a, b, u):
@@ -41,18 +42,21 @@ class Blade:
         self.speed = 0.0           # latest tip speed (screen heights / s), for debug + effects
         self.fire = BladeFire()     # streak fire (x3 heated, x4 on fire, x5 blue inferno)
         self._hist = []            # recent fresh samples: (t, base, angle)
+        self._swing_speed = 0.0    # speed of the last normal (un-lagged) segment
+        self.bridges = 0           # how many lag gaps we've bridged (debug overlay)
         self._last_t = None
         self._pending = []         # Sweeps not yet consumed by the game
         self._trail = []           # (t, base, tip) for the ribbon
 
     # ---- state changes -------------------------------------------------------------
     def reset_history(self):
-        """Forget past positions so a jump (tracking loss, resume, input switch) can't cut."""
+        """Forget past positions so a jump (pause/resume, draw, input switch) can't cut."""
         self._hist.clear()
         self._pending.clear()
         self._trail.clear()
         self._last_t = None
         self.speed = 0.0
+        self._swing_speed = 0.0
 
     def draw_out(self, now):
         self.state = "drawing"
@@ -64,14 +68,19 @@ class Blade:
         self.reset_history()
 
     def freeze(self):
+        """Hand went bad (lost, opened, two hands). Keep the last good sample as an anchor:
+        if tracking comes back within MAX_BRIDGE_GAP, the path from there gets swept."""
         if self.state in ("drawing", "drawn"):
             self.state = "frozen"
-            self.reset_history()
+            self._hist = self._hist[-1:]
+            self._pending.clear()
+            self._trail.clear()
+            self.speed = 0.0
 
     def unfreeze(self):
         if self.state == "frozen":
             self.state = "drawn"
-            self.reset_history()
+            self._last_t = None        # the next sample is new, and bridges from the anchor
 
     @property
     def visible(self):
@@ -114,10 +123,13 @@ class Blade:
 
         (t0, b0, a0), (t1, b1, a1) = self._hist
         gap = t1 - t0
-        if gap <= 0 or gap > C.MAX_SAMPLE_GAP:
-            # Long hitch: treat this sample as a fresh start, never a giant slash.
+        jump = math.hypot(b1[0] - b0[0], b1[1] - b0[1])
+        bridged = gap > C.MAX_SAMPLE_GAP
+        if gap <= 0 or gap > C.MAX_BRIDGE_GAP or (bridged and jump > C.MAX_BRIDGE_DIST * C.W):
+            # Too long (or a tracking glitch that jumped across the screen): fresh start, no slash.
             self._hist = [self._hist[-1]]
             self.speed = 0.0
+            self._swing_speed = 0.0
             return
 
         tip0 = self.tip(base=b0, angle=a0)
@@ -125,6 +137,14 @@ class Blade:
         dx, dy = tip1[0] - tip0[0], tip1[1] - tip0[1]
         dist = math.hypot(dx, dy)
         self.speed = dist / gap / C.H
+        if bridged:
+            # Tracking lagged mid-swing. Averaged over the gap the swing looks slow, so also
+            # trust the speed you were swinging at going into the lag.
+            self.speed = max(self.speed, self._swing_speed)
+            self.bridges += 1
+            self._trail.insert(len(self._trail) - 1, (now, b0, tip0))   # show the bridged swoosh
+        else:
+            self._swing_speed = self.speed
         direction = (dx / dist, dy / dist) if dist > 1e-6 else (1.0, 0.0)
 
         if self.state != "drawn":
@@ -140,7 +160,7 @@ class Blade:
             na = a0 + da * u
             quad = [prev_b, self.tip(base=prev_b, angle=prev_a),
                     self.tip(base=nb, angle=na), nb]
-            self._pending.append(Sweep(quad, self.speed, direction, na))
+            self._pending.append(Sweep(quad, self.speed, direction, na, bridged))
             prev_b, prev_a = nb, na
 
     def take_sweeps(self):

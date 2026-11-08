@@ -405,7 +405,7 @@ class PlayScene:
         lines = [f"phase {self.phase} bad {self.bad_t:.2f}  blade {self.blade.state}  speed {self.blade.speed:4.2f} H/s "
                  f"({'CUTS' if self.blade.speed >= C.CUT_SPEED else 'slow'})",
                  f"objects {len(self.objects)} halves {len(self.halves)} particles {len(self.particles)} "
-                 f"elapsed {self.elapsed:5.1f}",
+                 f"elapsed {self.elapsed:5.1f}  lag bridges {self.blade.bridges}",
                  f"events sent {len(self.ev.log)} dropped {self.ev.dropped}  last: "
                  f"{self.ev.log[-1]['type'] if self.ev.log else '-'}"]
         if s:
