@@ -25,6 +25,8 @@ class HandSample:
     confidence: float = 1.0
     held: bool = False     # vision is holding a lost hand (not a real detection this frame)
     predicted: bool = False  # made up by the swing predictor (or gliding back): an estimate
+    when: float = None     # estimated real time the hand was at this pose (glides after a
+                           # dropout spread the path across the whole gap); None = same as t
 
     @property
     def good(self) -> bool:

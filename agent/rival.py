@@ -62,6 +62,10 @@ MOMENTS = {
     "miss": "a fruit just fell off the bottom of the screen uncut",
     "halfway": "halfway through the run; give a state-of-the-match comment",
     "pattern": "you have noticed a habit in how they play; call it out",
+    "face": "react to the player's facial expression right now (expression only, never their looks)",
+    "whiff": "the player just swung hard at thin air and cut nothing",
+    "party_over": ("a group of friends just finished a round each; details has the standings. Name the winner "
+                   "grudgingly and roast whoever came last by name"),
 }
 
 
@@ -120,6 +124,7 @@ class Rival:
         self.latency = LatencyLog()
         self.best_score = read_json(BEST_JSON, {}).get("best_score", 0)
         self.session = read_json(SESSION_JSON, {"runs": []}).get("runs", [])
+        self.player = None                 # party mode: who is playing this run
         self.speaking_until = 0.0
         self.speaking = False
 
@@ -142,7 +147,16 @@ class Rival:
         self.prefetch_busy = set()
         self.next_prefetch = 0.0
 
+    def _face_note(self, text):
+        try:
+            import face
+            face.note(text)
+        except Exception:
+            pass
+
     def _engine_log(self, now, text):
+        if "face" in text:
+            self._face_note("GRIP-9000: " + text)
         if os.environ.get("RIVAL_VERBOSE"):
             log(". " + text)
 
@@ -152,6 +166,8 @@ class Rival:
     # ---------------------------------------------------------------- events
 
     def on_event(self, event, now):
+        if event["type"] == shared.FACE:
+            self._face_note("GRIP-9000 received face(" + event["expression"] + ")")
         if event["type"] == shared.GAME_START:
             self.detector.reset()
             intro = self.prefetched.get("intro")
@@ -161,6 +177,8 @@ class Rival:
             self.pending = None
             if self.health is not None:
                 self.health.reset_for_new_run()
+        if event["type"] == shared.GAME_START:
+            self.player = event.get("player")              # party mode name, or None
         if event["type"] == shared.GAME_OVER:
             event = dict(event)
             self.previous_best = self.best_score
@@ -230,6 +248,9 @@ class Rival:
                             "decided_t": decided_t}
             self.engine.line_started(decision, deadline + 0.5, decided_t)   # hold the floor while we wait
             stats = self.stats.snapshot(decided_t)
+            if decision.key in ("face", "face_combo"):
+                # The combo's own expression wins over a possibly stale FaceState snapshot.
+                stats["player_expression"] = decision.vars.get("expression")
             extra = self._details(decision)
             self.pool.submit(self._live_job, self.token, decision, stats, extra)
             return
@@ -259,6 +280,8 @@ class Rival:
         if decision.key == "pattern":
             self.detector.mark_spoken(decision.vars["pattern"])
         self.latency.write(decision.key, decision.source, spoken_as, decision.origin_t, decided_t, audio_t, text)
+        if decision.key in ("face", "face_combo"):
+            self._face_note("SPOKEN (" + spoken_as + "): " + text)
         ms = round((audio_t - decision.origin_t) * 1000)
         log(decision.mood.upper() + " " + decision.key + " via " + spoken_as
             + (" (cut-in)" if decision.interrupt else "") + ": " + text + "  [" + str(ms) + " ms]")
@@ -267,7 +290,10 @@ class Rival:
 
     def _live_job(self, token, decision, stats, extra):
         words = FINAL_WORDS if decision.final else LINE_WORDS
-        text = self.writer.write(MOMENTS.get(decision.key, decision.key), decision.mood, stats, extra, max_words=words)
+        moment = MOMENTS.get(decision.key, decision.key)
+        if decision.key == "face_combo":
+            moment = decision.vars.get("context", MOMENTS["face"]) + "; react to that (their expression, never their looks)"
+        text = self.writer.write(moment, decision.mood, stats, extra, max_words=words)
         sound = None
         if text is not None:
             sound = self.tts.synth(text)
@@ -353,6 +379,8 @@ class Rival:
         extra = {}
         for key in decision.vars:
             extra[key] = decision.vars[key]
+        if getattr(self, "player", None) and decision.key != "party_over":
+            extra["player_name"] = self.player            # party mode: live lines may use their name
         previous = self._previous_run()
         if decision.key == "game_over":
             extra["previous_best"] = getattr(self, "previous_best", 0)

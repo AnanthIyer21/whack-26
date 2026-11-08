@@ -25,6 +25,8 @@ class Sweep:
     angle: float        # blade angle at this substep (the cut line follows the blade)
     bridged: bool = False   # a "lag sweep": bridged across a tracking gap, or a predicted/
                             # gliding estimate. The game is more forgiving with these.
+    t: float = 0.0          # when the blade was (probably) here: lag cuts check fruit positions
+                            # at this moment, not where the fruit has moved to since
 
 
 def _lerp(a, b, u):
@@ -45,7 +47,8 @@ class Blade:
         self.draw_t0 = 0.0
         self.speed = 0.0           # latest tip speed (screen heights / s), for debug + effects
         self.fire = BladeFire()     # streak fire (x3 heated, x4 on fire, x5 blue inferno)
-        self._hist = []            # recent fresh samples: (t, base, angle)
+        self.fire.prewarm_aura(self.length)
+        self._hist = []            # recent fresh samples: (t, base, angle, when)
         self._swing_speed = 0.0    # speed of the last normal (un-lagged) segment
         self.bridges = 0           # how many lag gaps we've bridged (debug overlay)
         self._last_t = None
@@ -119,14 +122,14 @@ class Blade:
         was_predicted, self._last_predicted = getattr(self, "_last_predicted", False), sample.predicted
 
         self._trail.append((now, self.base, self.tip(now)))
-        self._hist.append((sample.t, self.base, self.angle))
+        self._hist.append((sample.t, self.base, self.angle, sample.when if sample.when is not None else sample.t))
         if len(self._hist) > 2:
             self._hist.pop(0)
         if len(self._hist) < 2:
             self.speed = 0.0
             return
 
-        (t0, b0, a0), (t1, b1, a1) = self._hist
+        (t0, b0, a0, w0), (t1, b1, a1, w1) = self._hist
         gap = t1 - t0
         jump = math.hypot(b1[0] - b0[0], b1[1] - b0[1])
         bridged = gap > C.MAX_SAMPLE_GAP
@@ -159,6 +162,8 @@ class Blade:
         # and never misses the arc's bulge.
         da = wrap_angle(a1 - a0)
         n = max(1, math.ceil(abs(da) / C.MAX_SUBSTEP_ANGLE))
+        if lag:                           # long guessed paths: small steps, each with its own time
+            n = max(n, math.ceil(max(jump, dist) / C.LAG_SUBSTEP_PX))
         prev_b, prev_a = b0, a0
         for i in range(1, n + 1):
             u = i / n
@@ -166,7 +171,8 @@ class Blade:
             na = a0 + da * u
             quad = [prev_b, self.tip(base=prev_b, angle=prev_a),
                     self.tip(base=nb, angle=na), nb]
-            self._pending.append(Sweep(quad, self.speed, direction, na, lag))
+            ts = w0 + (w1 - w0) * (i - 0.5) / n      # when the blade (probably) passed here
+            self._pending.append(Sweep(quad, self.speed, direction, na, lag, ts))
             prev_b, prev_a = nb, na
 
     def take_sweeps(self):
@@ -200,7 +206,7 @@ class Blade:
             surf.blit(glow_layer, trail_box, area=trail_box)
             glow_layer.fill((0, 0, 0, 0), trail_box)
         if not self.visible:
-            self.fire.update_and_draw(surf, self.base, self.tip(), now, visible=False)  # let embers die out
+            self.fire.update_and_draw(surf, self.base, self.tip(), now, visible=False, full_length=self.length)  # let embers die out
             return
 
         g = self.grow(now)
@@ -212,7 +218,8 @@ class Blade:
             img.fill((0, 0, 0, 0), pygame.Rect(0, 0, img.get_width(), int(pivot_y - self.length * g)))
         rot = pygame.transform.rotozoom(img, angle_to_rotozoom(self.angle), 1.0)
         surf.blit(rot, rot.get_rect(center=(int(self.base[0]), int(self.base[1]))))
-        self.fire.update_and_draw(surf, self.base, self.tip(now), now, visible=not frozen)
+        self.fire.update_and_draw(surf, self.base, self.tip(now), now, visible=not frozen,
+                               full_length=self.length)
 
         # glint at the tip right as the draw finishes ("shing")
         since = now - self.draw_t0 - C.DRAW_TIME

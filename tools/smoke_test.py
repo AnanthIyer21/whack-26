@@ -73,7 +73,8 @@ def check_event_builders():
         shared.ev_slice("apple"), shared.ev_miss("left"), shared.ev_combo(3), shared.ev_streak(5),
         shared.ev_streak_broken(5), shared.ev_bomb_hit(), shared.ev_life_lost(2),
         shared.ev_pause("no_hand"), shared.ev_resume(), shared.ev_time_warning(10),
-        shared.ev_game_over(100, 3, 60, "timer"),
+        shared.ev_game_over(100, 3, 60, "timer"), shared.ev_face("smiling", 0.5),
+        shared.ev_whiff(), shared.ev_party_over([{"name": "A", "score": 10}]),
     )
     seen = set()
     for e in built:
@@ -118,10 +119,14 @@ def run_program(args):
 
     stop = shared.stop_event
     threads = []
-    for name, target, kwargs in (
+    parts = [
         ("vision", vision.run, {"stop_event": stop}),
         ("rival", rival.run, {"stop_event": stop, "offline": not args.online}),
-    ):
+    ]
+    if args.face:
+        import face
+        parts.append(("face", face.run, {"stop_event": stop}))
+    for name, target, kwargs in parts:
         t = threading.Thread(target=target, name=name, kwargs=kwargs, daemon=True)
         t.start()
         threads.append(t)
@@ -155,6 +160,12 @@ def run_program(args):
     check("latest frame available", frame is not None, "" if frame is None else str(frame.shape))
     check("events reach the rival (queue drained)", shared.events.qsize() <= 1, str(shared.events.qsize()) + " left")
     check("rival posts lines", lines_posted[0] + lines_before > 0, str(lines_posted[0]) + " lines")
+    if args.face:
+        import face
+        check("face thread reads frames (~10 Hz)", face.diag.get("fps", 0.0) >= 5,
+              str(round(face.diag.get("fps", 0.0), 1)) + " fps, " + str(round(face.diag.get("ms", 0.0), 1))
+              + " ms/frame, state " + str(face.diag.get("state")))
+        check("face thread publishes FaceState", shared.get_face_state().t > 0)
     alive = []
     for t in threads:
         if t.is_alive():
@@ -169,6 +180,7 @@ def main():
     parser.add_argument("--rival", choices=("fake", "real"), default="fake")
     parser.add_argument("--seconds", type=float, default=12.0)
     parser.add_argument("--online", action="store_true", help="let the real rival call Claude and ElevenLabs")
+    parser.add_argument("--face", action="store_true", help="also run the face extension thread")
     args = parser.parse_args()
 
     check_hand_state_atomic()

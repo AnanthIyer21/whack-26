@@ -13,13 +13,13 @@ FPS_CAM = 30
 LATENCY = 0.03
 
 
-def make_stream(swing_speed=1.6, held=(0.20, 0.35), lost=(0.35, 0.50), back_x=0.85):
+def make_stream(swing_speed=1.6, held=(0.20, 0.35), lost=(0.35, 0.50), back_x=0.85, end=0.75):
     """HandState over time: normalised x moves right at swing_speed (widths/s) while tracked."""
     states = []
     conf = 0.80
     x = 0.20
     t = 0.0
-    while t <= 0.75:
+    while t <= end:
         if t < held[0]:
             x = 0.20 + swing_speed * t
             conf = 0.80 + 0.01 * math.sin(t * 97)          # real detections jitter
@@ -104,3 +104,38 @@ def test_open_hand_mid_swing_is_not_predicted():
     outs, _, inp = run(states)
     assert inp.predictor.predictions == 0
     assert any(not s.good for t, s in outs if 0.25 + LATENCY < t < 0.45 + LATENCY)
+
+
+def test_end_to_end_teleport_cuts_fruit_where_it_was_when_the_blade_passed():
+    """Through the real play scene: a slow move (nothing to predict), the hand is lost for
+    0.45 s and reappears far to the right - a teleport. A fruit crossed that path halfway
+    through the gap but has shot 220 px up since. It must still be cut (time-matched check)."""
+    import os, queue
+    os.environ.setdefault("SDL_VIDEODRIVER", "dummy")
+    from game.app import App
+    from game.entities import KINDS, Fruit
+    from game.link import resolve
+    from game.scenes.play import PlayScene
+
+    states = make_stream(swing_speed=0.1, held=(0.20, 0.30), lost=(0.30, 0.75), back_x=0.85, end=1.0)
+    cur = {"s": shared.HandState()}
+    app = App(resolve(post_event=lambda e: None, rival_lines=queue.Queue(),
+                      get_hand_state=lambda: cur["s"]), input_mode="hand")
+    sc = PlayScene(app)
+    sc.phase, sc.started = "playing", True
+    sc.blade.draw_out(-1.0)
+    sc.spawner.timer = 999
+    # on the blade's straight path (x = 0.6 W, blade band y 252..432) at ~t = 0.56,
+    # rising at 1000 px/s, so by the time tracking returns it's well above the band
+    t_pass = 0.56
+    f = Fruit(KINDS[2], (0.60 * C.W, 340 + 1000 * (t_pass - LATENCY)), (0, -1000), 0, 0)
+    sc.objects = [f]
+    now, i = states[0].t + LATENCY, 0
+    while now < states[-1].t + LATENCY:
+        while i < len(states) and states[i].t + LATENCY <= now:
+            cur["s"] = states[i]
+            i += 1
+        sc.update(1 / 60, now)
+        now += 1 / 60
+    assert app.inputs["hand"].predictor.predictions == 0     # a teleport, not a predicted swing
+    assert f.cut, "fruit that crossed the teleport path during the gap was missed"

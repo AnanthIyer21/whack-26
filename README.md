@@ -28,6 +28,8 @@ python main.py --vision mouse                   # mouse sword: hold the left but
 python main.py --vision real --game real --rival real
 python main.py --rival real --offline           # rival with no API calls
 python main.py --vision real --game real --rival real --diag   # prints vision health each second
+python main.py --vision real --game real --rival real --face   # extension: GRIP-9000 reads your expressions live
+python tools/face_debug.py                      # face extension: live expression levels as text (no window)
 python tools/smoke_test.py                      # automated checks (run after every merge)
 ```
 
@@ -39,3 +41,10 @@ Each part exposes `run(stop_event, ...)`; see the top of `main.py`. Shared inter
 - `mediapipe` 1.2.2 has no `mp.solutions.hands`: use the Tasks API (`HandLandmarker` with a `hand_landmarker.task` model file).
 - `pygame.font.SysFont` hangs for seconds on macOS: load a TTF from `assets/` (or `pygame.font.Font(None, size)`).
 - Frame pacing: use `shared.FramePacer(shared.FPS)` and call `pacer.tick()` each frame. `clock.tick(60)` only reaches ~39 fps on macOS, and `clock.tick_busy_loop(60)` holds Python's lock while spinning, starving the vision and rival threads (~60% less CPU for them).
+
+## Results and credits
+
+- Reliability check (grip/open, 4 people, both hands): `results/reliability_table.md`, produced by `tools/reliability_check.py` + `tools/reliability_summary.py`.
+- Pitch numbers slide: `results/numbers_slide.png` (`tools/make_numbers_slide.py`).
+- Demo docs (Devpost draft, pitch script, video shot list, Sunday runbook): `docs/`.
+- Art: all pixel art drawn in code (`tools/gen_art.py`). Sounds and font: CC0 / OFL, full list in [`assets/CREDITS.md`](assets/CREDITS.md).

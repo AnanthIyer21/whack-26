@@ -10,8 +10,15 @@ import pygame
 
 SS = 3
 MOODS = ("smug", "rattled", "defensive", "gloating")
+LAUGH_FACES = ("laughing", "laughing2")   # two mouth frames, swapped quickly = cackling
+LAUGH_TIME = 2.8                          # seconds GRIP-9000 cackles after you hit a bomb
+# The laugh uses RBadiadka7's pineapple: gloating face, mouth wide open / closed, swapped fast.
+# (A dedicated avatar/laughing.png + laughing2.png would win if they're ever added.)
+LAUGH_ART = {"laughing": ("avatar/laughing.png", "rival_gloating_talk.png"),
+             "laughing2": ("avatar/laughing2.png", "rival_gloating.png")}
 TYPE_SPEED = 40          # characters per second
 ASSET_DIR = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "assets", "avatar")
+ART_DIR = os.path.dirname(ASSET_DIR)      # assets/
 
 
 def _face(mood, size):
@@ -20,7 +27,7 @@ def _face(mood, size):
     c = S / 2
     R = S * 0.46
     head = {"smug": (120, 90, 200), "rattled": (90, 130, 200), "defensive": (200, 120, 60),
-            "gloating": (200, 60, 110)}[mood]
+            "gloating": (200, 60, 110), "laughing": (215, 70, 120), "laughing2": (215, 70, 120)}[mood]
     pygame.draw.circle(s, (20, 20, 30), (c, c + S * 0.02), R + S * 0.02)
     pygame.draw.circle(s, head, (c, c), R)
     pygame.draw.circle(s, tuple(min(255, v + 50) for v in head), (c - R * 0.3, c - R * 0.35), R * 0.35)
@@ -43,6 +50,17 @@ def _face(mood, size):
             pygame.draw.circle(s, eye, (c + sx * ex, ey), er)
             pygame.draw.line(s, (255, 255, 255), (c + sx * (ex - er * 1.4), ey - er * 2.6),
                              (c + sx * (ex + er * 1.2), ey - er * 1.6), int(SS * 3))
+    elif mood in LAUGH_FACES:     # laughing: eyes squeezed shut into chevrons, tears flying
+        for sx in (-1, 1):
+            cx_, w_ = c + sx * ex, er * 1.3
+            # ">  <" : each eye points towards the middle
+            pts = [(cx_ + sx * w_ * 0.6, ey - er * 0.8),
+                   (cx_ - sx * w_ * 0.6, ey),
+                   (cx_ + sx * w_ * 0.6, ey + er * 0.8)]
+            pygame.draw.lines(s, eye, False, pts, int(SS * 3.5))
+            tear = pygame.Rect(0, 0, R * 0.13, R * 0.2)
+            tear.center = (c + sx * (R * 0.92), ey + R * (0.12 if mood == "laughing" else 0.2))
+            pygame.draw.ellipse(s, (150, 215, 255), tear)
     else:                         # gloating: happy arcs
         for sx in (-1, 1):
             rect = pygame.Rect(0, 0, er * 2.4, er * 2.4)
@@ -56,6 +74,15 @@ def _face(mood, size):
         pygame.draw.ellipse(s, (20, 20, 30), (c - R * 0.12, my - R * 0.1, R * 0.24, R * 0.3))
     elif mood == "defensive":
         pygame.draw.line(s, (20, 20, 30), (c - R * 0.3, my), (c + R * 0.3, my - R * 0.05), int(SS * 3))
+    elif mood in LAUGH_FACES:     # big open cackle (frame 2 is a little more closed)
+        h = R * (0.5 if mood == "laughing" else 0.36)
+        mouth = pygame.Rect(0, 0, R * 0.9, h)
+        mouth.midtop = (c, my - R * 0.12)
+        pygame.draw.ellipse(s, (25, 15, 25), mouth)
+        pygame.draw.rect(s, head, (mouth.x, mouth.y, mouth.w, mouth.h * 0.35))  # flat top lip
+        tongue = pygame.Rect(0, 0, mouth.w * 0.45, mouth.h * 0.38)
+        tongue.midbottom = (c, mouth.bottom - mouth.h * 0.06)
+        pygame.draw.ellipse(s, (235, 90, 110), tongue)
     else:
         pygame.draw.arc(s, (20, 20, 30), (c - R * 0.4, my - R * 0.35, R * 0.8, R * 0.5), math.pi * 1.05, math.pi * 1.95, int(SS * 4))
     # antenna
@@ -64,21 +91,31 @@ def _face(mood, size):
 
 
 _cache = {}
+_pixel = set()          # cache keys that are RBadiadka7's pixel art (keep them crisp)
 
 
 def face(mood, size):
-    mood = mood if mood in MOODS else "smug"
+    mood = mood if mood in MOODS or mood in LAUGH_FACES else "smug"
     key = (mood, size)
     if key not in _cache:
         img = None
-        path = os.path.join(ASSET_DIR, mood + ".png")
-        if os.path.exists(path):
-            try:
-                img = pygame.transform.scale(pygame.image.load(path).convert_alpha(), (size, size))
-            except pygame.error:
-                img = None
+        paths = ([os.path.join(ART_DIR, p) for p in LAUGH_ART[mood]] if mood in LAUGH_FACES
+                 else [os.path.join(ASSET_DIR, mood + ".png")])
+        for path in paths:
+            if os.path.exists(path):
+                try:
+                    img = pygame.transform.scale(pygame.image.load(path).convert_alpha(), (size, size))
+                    _pixel.add(key)
+                    break
+                except pygame.error:
+                    img = None
         _cache[key] = img or _face(mood, size)
     return _cache[key]
+
+
+def is_pixel_art(mood, size):
+    face(mood, size)
+    return (mood, size) in _pixel
 
 
 def wrap(font, text, width):
@@ -104,6 +141,26 @@ class RivalDisplay:
         self.line = None
         self.shown_at = 0.0
         self.mood = "smug"
+        self.laugh_t0 = -9.0
+        self.laugh_dur = 0.0
+        self.laugh_k = 0.0         # 0..1 how hard it's laughing
+        self.has = []              # floating "HA"s: [t_start, dx, size, angle]
+
+    def laugh(self, now, strength=1.0):
+        """Point and laugh (the game calls this when you hit a bomb)."""
+        strength = max(0.0, min(1.0, strength))
+        if self.laughing(now):                    # another bomb mid-laugh: keep it going
+            self.laugh_dur = max(self.laugh_dur, now - self.laugh_t0 + LAUGH_TIME * 0.7)
+            return
+        self.laugh_t0, self.laugh_k = now, strength
+        self.laugh_dur = LAUGH_TIME
+        # a stream of "HA"s over most of the laugh, alternating sides
+        n = int(LAUGH_TIME / 0.32)
+        self.has = [[now + i * 0.32, (-1) ** i * (8 + 10 * (i % 3)), int(30 + 12 * strength), (-1) ** i * 12]
+                    for i in range(n)]
+
+    def laughing(self, now):
+        return now - self.laugh_t0 < self.laugh_dur
 
     def show(self, line, now):
         self.line, self.shown_at = line, now
@@ -113,6 +170,28 @@ class RivalDisplay:
         """Pick up the app's newest rival line if it's new."""
         if self.app.rival_line is not None and self.app.rival_line is not self.line:
             self.show(self.app.rival_line, now)
+
+    def _draw_has(self, screen, now, avatar_center, size):
+        alive = []
+        for ha in self.has:
+            t0, dx, fs, ang = ha
+            age = now - t0
+            if age < 0:
+                alive.append(ha)
+                continue
+            if age > 0.9:
+                continue
+            alive.append(ha)
+            u = age / 0.9
+            pop = 1 + 0.5 * max(0.0, 1 - age / 0.1)
+            x = avatar_center[0] - size * 0.6 + dx - 45 * u
+            y = max(fs * 0.7, avatar_center[1] - size * 0.15 - 50 * u)   # stays on screen
+            for col, off in (((150, 30, 70), (2, 2)), ((255, 255, 255), (0, 0))):
+                img = self.app.render("HA", int(fs * pop), col)
+                img = pygame.transform.rotozoom(img, ang + math.sin(now * 20) * 5, 1.0)
+                img.set_alpha(int(255 * (1 - u * u)))
+                screen.blit(img, img.get_rect(center=(x + off[0], y + off[1])))
+        self.has = alive
 
     def current(self, now):
         """(text so far, alpha) or None when nothing is showing."""
@@ -134,10 +213,30 @@ class RivalDisplay:
         if self.line:
             age = now - self.shown_at
             bounce = math.sin(min(1.0, age / 0.35) * math.pi) * 0.12 * max(0.0, 1 - age / 0.35)
-        img = face(self.mood, size)
-        if bounce:
-            img = pygame.transform.rotozoom(img, math.sin(now * 40) * 6 * bounce * 4, 1 + bounce)
-        screen.blit(img, img.get_rect(center=avatar_center))
+        center = avatar_center
+        if self.laughing(now):
+            # cackling: mouth flaps, head bobs and shakes, tears fly, "HA"s float up
+            age = now - self.laugh_t0
+            fade = min(1.0, (self.laugh_dur - age) / 0.25)
+            k = self.laugh_k * fade
+            frame = LAUGH_FACES[int(now * 9) % 2]
+            img = face(frame, size)
+            pixel = is_pixel_art(frame, size)
+            tilt = math.sin(now * 14) * 9 * k
+            if pixel:                       # pixel art: nearest-neighbour rotate, stays crisp
+                img = pygame.transform.rotate(img, round(tilt / 3) * 3)
+            else:
+                img = pygame.transform.rotozoom(img, tilt, 1 + 0.07 * k)
+            center = (avatar_center[0] + math.sin(now * 23) * 3 * k,
+                      avatar_center[1] - abs(math.sin(now * 18)) * 7 * k)
+        else:
+            img = face(self.mood, size)
+            if bounce:
+                img = pygame.transform.rotozoom(img, math.sin(now * 40) * 6 * bounce * 4, 1 + bounce)
+        screen.blit(img, img.get_rect(center=center))
+        if self.laughing(now) and is_pixel_art(LAUGH_FACES[0], size):
+            self._pixel_tears(screen, now, center, size, k)
+        self._draw_has(screen, now, avatar_center, size)
 
         cur = None
         if text_override is not None:
@@ -163,3 +262,19 @@ class RivalDisplay:
             bubble.blit(font.render(l, True, (25, 25, 35)), (18, 13 + i * lh))
         bubble.set_alpha(alpha)
         screen.blit(bubble, (bubble_right - w - 20, avatar_center[1] - tail_y))
+
+    def _pixel_tears(self, screen, now, center, size, k):
+        """Blocky tears streaming from the pineapple's eyes (matches the pixel-art style)."""
+        px = max(3, size // 40)                       # chunky enough to read at avatar size
+        x0, y0 = center[0] - size / 2, center[1] - size / 2
+        for i, (ex, side) in enumerate(((0.27, -1), (0.73, 1))):
+            for j in range(2):                        # two drops per eye, staggered
+                u = ((now - self.laugh_t0) * 2.2 + j * 0.5 + i * 0.25) % 1.0
+                x = x0 + size * ex + side * u * size * 0.10
+                y = y0 + size * 0.50 + u * u * size * 0.30
+                x, y = round(x / px) * px, round(y / px) * px    # snap to the pixel grid
+                a = int(255 * k * (1 - u))
+                drop = pygame.Surface((px * 2, px * 3), pygame.SRCALPHA)
+                drop.fill((110, 190, 255, a))
+                drop.fill((235, 250, 255, a), pygame.Rect(0, 0, px, px))
+                screen.blit(drop, (x, y))

@@ -24,6 +24,7 @@ from ..geometry import circle_hits_quad
 from ..hud import Hud
 from ..rival_ui import RivalDisplay
 from ..scoring import Score
+from .. import sfx
 from ..spawner import Spawner
 from ..storage import load_best, save_best
 from ..ui import Button, fist_ring
@@ -169,6 +170,7 @@ class PlayScene:
             self.objects += self.spawner.update(dt, min(self.elapsed, self.run_len), self.run_len)
         for o in self.objects:
             o.step(dt)
+            o.remember(now)
             if o.fell_off(o.radius):
                 o.dead = True
                 if not o.is_bomb:
@@ -193,13 +195,18 @@ class PlayScene:
         if self.phase == "resuming":
             self.blade.update(s, now)     # katana follows your fist while the ring fills
             self.blade.take_sweeps()      # ...but can't cut until play resumes
+        prev_cd = self.cd
         self.cd += dt
+        if self.phase == "countdown":
+            sfx.countdown(prev_cd, self.cd, self._cd_total())   # 3-2-1 beeps (RBadiadka7)
         if self.cd < self._cd_total():
             return
         # GO!
         if not self.started:
             self.started = True
-            self.ev.emit("game_start", duration=self.run_len, lives=self.score.lives)
+            party = self.app.party
+            self.ev.emit("game_start", duration=self.run_len, lives=self.score.lives,
+                         player=party.current if party is not None else None)
         else:
             self.ev.emit("resume")
         resumed = self.phase == "resuming"
@@ -221,6 +228,7 @@ class PlayScene:
         self.debris = [d for d in self.debris if d.step(dt)]
 
     def _pause(self, reason):
+        sfx.reset_swing()
         self.phase = "paused"
         self.pause_reason = reason
         self.ev.emit("pause", reason=reason)
@@ -229,12 +237,21 @@ class PlayScene:
 
     def _slice(self, now):
         sweeps = self.blade.take_sweeps()
+        # whoosh on a fast swing; a swing that cuts nothing is a whiff for GRIP-9000 to roast
+        # (sent only once shared/ has ev_whiff, so this is safe before the rival supports it)
+        if sfx.swing_frame(max((sw.speed for sw in sweeps), default=0.0), now) == "whiff":
+            if hasattr(shared, "ev_whiff"):
+                self.ev.emit("whiff")
         if self.blast and not self.blast.boomed:
             return                        # no cutting while the bomb winds up
+        # Fruit cut at a lower speed than bombs (so you never blow up from a nudge).
         # Lag sweeps (tracking dropped and we bridged/predicted the path) are estimates, so they
-        # get room for error: a lower speed bar, fatter fruit hitboxes, and SMALLER bombs.
-        fast = [sw for sw in sweeps
-                if sw.speed >= C.CUT_SPEED * (C.LAG_SPEED_FACTOR if sw.bridged else 1.0)]
+        # get room for error: a lower speed bar, fatter fruit hitboxes, SMALLER bombs, and fruit
+        # are also checked where they WERE when the blade passed (they move during the gap).
+        def fruit_speed(sw):
+            return C.CUT_SPEED * (C.LAG_SPEED_FACTOR if sw.bridged else 1.0)
+
+        fast = [sw for sw in sweeps if sw.speed >= fruit_speed(sw)]
         if not fast:
             return
         cut_any = False
@@ -243,10 +260,17 @@ class PlayScene:
                 continue
             for sw in fast:
                 if o.is_bomb:
+                    if sw.speed < C.BOMB_CUT_SPEED:
+                        continue
                     r = o.hit_radius * (C.LAG_BOMB_FACTOR if sw.bridged else 1.0)
+                    hit = circle_hits_quad(o.x, o.y, r, sw.quad)
                 else:
                     r = o.radius + (C.LAG_HIT_PAD if sw.bridged else 0.0)
-                if circle_hits_quad(o.x, o.y, r, sw.quad):
+                    hit = circle_hits_quad(o.x, o.y, r, sw.quad)
+                    if not hit and sw.bridged:
+                        px, py = o.pos_at(sw.t)
+                        hit = circle_hits_quad(px, py, r, sw.quad)
+                if hit:
                     o.dead = o.cut = True
                     if o.is_bomb:
                         self._bomb_hit(o, now)
@@ -292,6 +316,7 @@ class PlayScene:
         self.freeze = 0.0
         had = self.score.swing
         lives = self.score.bomb()          # a bomb ends the swing (its combo still scores)
+        self.rival.laugh(now)              # GRIP-9000 cackles at you (bombs only)
         if had:
             self.fx.on_swing_end(None, now)
         self.hud.life_lost(lives, now)

@@ -3,6 +3,7 @@
 Sprites are built once (game/fruit_art.py, until RBadiadka7's PNGs arrive) and rotated each
 frame with rotozoom (smooth edges). Positions are screen pixels; velocities px/s.
 """
+from collections import deque
 from dataclasses import dataclass
 import math
 import random
@@ -116,6 +117,29 @@ class Flyer:
         self.spin = spin
         self.dead = False
         self.cut = False
+        self.hist = deque(maxlen=100)   # (time, x, y) over the last ~1.5 s, for lag cuts
+
+    def remember(self, now):
+        self.hist.append((now, self.x, self.y))
+
+    def pos_at(self, t):
+        """Where this was at time t (interpolated); current position if t is newer than the log."""
+        h = self.hist
+        if not h or t >= h[-1][0]:
+            return self.x, self.y
+        if t <= h[0][0]:
+            return h[0][1], h[0][2]
+        lo, hi = 0, len(h) - 1
+        while hi - lo > 1:
+            mid = (lo + hi) // 2
+            if h[mid][0] <= t:
+                lo = mid
+            else:
+                hi = mid
+        t0, x0, y0 = h[lo]
+        t1, x1, y1 = h[hi]
+        u = (t - t0) / (t1 - t0) if t1 > t0 else 0.0
+        return x0 + (x1 - x0) * u, y0 + (y1 - y0) * u
 
     def step(self, dt):
         self.vy += self.g * dt

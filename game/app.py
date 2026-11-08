@@ -16,6 +16,8 @@ from . import config as C
 from .background import CameraBackground
 from .events import Emitter
 from .input import HandInput, MouseInput, Viewport
+from .leaderboard import Store
+from . import sfx
 
 
 class App:
@@ -57,6 +59,8 @@ class App:
         self.rival_line = None
         self.rival_line_at = 0.0
         self.final_line = None
+        self.leaderboard = Store()                    # SQLite boards in data/ (RBadiadka7)
+        self.party = None                             # a Party while party mode is on
 
         from .scenes.title import TitleScene
         self.scene = TitleScene(self)
@@ -114,6 +118,8 @@ class App:
             for ev in pygame.event.get():
                 if ev.type == pygame.QUIT:
                     self.running = False
+                elif ev.type == pygame.KEYDOWN and getattr(self.scene, "typing", False):
+                    self.scene.handle_event(ev)   # typing a name: F / D / Tab are letters, not shortcuts
                 elif ev.type == pygame.KEYDOWN and ev.key == pygame.K_f:
                     self.toggle_fullscreen()
                 elif ev.type == pygame.KEYDOWN and ev.key == pygame.K_d:
@@ -129,6 +135,7 @@ class App:
 
             self._read_rival(now)
             self.scene.update(dt, now)
+            sfx.update(self)              # music per scene, ducking, Sound On/Off (RBadiadka7)
             self.glow.fill((0, 0, 0, 0))
             self.scene.draw(self.screen, now)
             self._draw_corner_tags()

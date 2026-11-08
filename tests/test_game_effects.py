@@ -89,6 +89,60 @@ def test_lag_sweep_is_kinder_with_bombs():
     near = Bomb((500, 300), (0, 0), 0, 0).hit_radius * 0.85   # grazing distance
     for lag, expect_hit in ((False, True), (True, False)):
         sc = _scene_with([Bomb((500, 300 + near), (0, 0), 0, 0)])
-        sc.blade._pending = [_sweep(Cfg.CUT_SPEED * 1.5, lag)]
+        sc.blade._pending = [_sweep(Cfg.BOMB_CUT_SPEED * 1.5, lag)]
         sc._slice(0.0)
         assert (sc.blast is not None) == expect_hit, lag
+
+
+def test_fruit_cut_speed_is_lower_than_bomb_speed():
+    from game import config as Cfg
+    assert Cfg.CUT_SPEED < Cfg.BOMB_CUT_SPEED
+    between = (Cfg.CUT_SPEED + Cfg.BOMB_CUT_SPEED) / 2
+    sc = _scene_with([Fruit(KINDS[2], (500, 300), (0, 0), 0, 0)])
+    sc.blade._pending = [_sweep(between, False)]
+    sc._slice(0.0)
+    assert sc.objects == []                       # fruit: cut
+    sc = _scene_with([Bomb((500, 300), (0, 0), 0, 0)])
+    sc.blade._pending = [_sweep(between, False)]
+    sc._slice(0.0)
+    assert sc.blast is None                       # bomb: not set off by the same swing
+
+
+def test_lag_cut_checks_where_the_fruit_was_when_the_blade_passed():
+    from game import config as Cfg
+    # the fruit was ON the slash line 0.4 s ago, but has since fallen 250 px below it
+    f = Fruit(KINDS[2], (500, 550), (0, 0), 0, 0)
+    f.remember(9.6); f.hist[-1] = (9.6, 500, 300)
+    f.remember(10.0)
+    for lag, expect in ((False, False), (True, True)):
+        g = Fruit(KINDS[2], (500, 550), (0, 0), 0, 0)
+        g.hist.extend(f.hist)
+        sc = _scene_with([g])
+        sw = _sweep(Cfg.CUT_SPEED * 1.5, lag)
+        sw.t = 9.6
+        sc.blade._pending = [sw]
+        sc._slice(10.0)
+        assert (sc.objects == []) == expect, lag
+
+
+def test_rival_laughs_only_at_bombs_and_for_a_good_while():
+    sc = _scene_with([Fruit(KINDS[2], (500, 900), (0, 50), 0, 0)])   # a fruit falling off the bottom
+    sc.update(1 / 60, 5.0)
+    assert not sc.rival.laughing(5.05)                               # a miss: no laugh
+    sc._bomb_hit(Bomb((500, 300), (0, 0), 0, 0), 10.0)
+    assert sc.rival.laughing(10.1) and sc.rival.laughing(12.5)       # still cackling 2.5 s later
+    assert not sc.rival.laughing(13.0)
+
+
+def test_rival_bubble_and_laugh_draw_without_errors():
+    import pygame
+    from game.rival_ui import RivalDisplay
+    sc = _scene_with([])
+    r = RivalDisplay(sc.app, 140)
+    r.show({"text": "That was a bomb. It said bomb on it.", "mood": "gloating", "duration": 2}, 1.0)
+    surf = pygame.Surface((1280, 720))
+    r.draw(surf, 1.5, (1190, 90), 1110)                 # bubble showing
+    r.laugh(2.0)
+    r.draw(surf, 2.3, (1190, 90), 1110)                 # laughing (pineapple art if present) + bubble
+    r.draw(surf, 1.0, (640, 400), 520, thinking=True)   # game-over "..." bubble
+    assert r.laughing(2.3)

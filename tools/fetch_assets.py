@@ -18,6 +18,9 @@ import soundfile as sf
 ROOT = os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", "assets")
 OGA = "https://opengameart.org/sites/default/files/"
 SR = 44100
+SLICE_MAX = 0.45      # slices are cut to this length (s) with a fade, so they stay snappy
+SLICE_FADE = 0.08
+SLICE_DRIVE = 3.0     # soft-clip compression on slices: louder body/scrape, same peak
 
 PACKS = {
     # key: (zip url, page url, title, author, licence)
@@ -31,6 +34,12 @@ PACKS = {
             "80 CC0 RPG SFX", "rubberduck", "CC0"),
     "swish": (OGA + "swishes.zip", "https://opengameart.org/content/swishes-sound-pack",
               "Swishes Sound Pack", "artisticdude", "CC0"),
+    "swords": (OGA + "sword_-_starninjas_1.zip",
+               "https://opengameart.org/content/20-sword-sound-effects-attacks-and-clashes",
+               "20 Sword Sound Effects (Attacks and Clashes)", "StarNinjas", "CC0"),
+    "weapons": (OGA + "weapons-apparel.zip",
+                "https://opengameart.org/content/fantasy-weapons-and-apparel-sfx-library",
+                "Fantasy Weapons and Apparel SFX Library", "Vehicle", "CC0"),
     "synth": (OGA + "50-CC0-retro-synth-SFX.zip", "https://opengameart.org/content/50-cc0-retro-synth-sfx",
               "50 CC0 retro / synth SFX", "rubberduck", "CC0"),
 }
@@ -39,12 +48,21 @@ SFX512 = "The Essential Retro Video Game Sound Effects Collection [512 sounds] B
 CHIP = "Juhani Junkala [Retro Game Music Pack] "
 
 # output name -> (pack, path inside zip, gain relative to peak 1.0)
+# A list of (pack, path, gain, offset_s) instead means: mix those layers, then normalise to the last gain.
 SOUNDS = {
-    "sfx_slice_1": ("swish", "swishes/swish-3.wav", 0.8),
-    "sfx_slice_2": ("swish", "swishes/swish-7.wav", 0.8),
-    "sfx_slice_3": ("swish", "swishes/swish-9.wav", 0.8),
-    "sfx_splat": ("rpg", "creature_slime_03.ogg", 0.7),
-    "sfx_explosion": ("sfx512", SFX512 + "Explosions/Medium Length/sfx_exp_medium3.wav", 0.9),
+    # violent knife-sharpener slash: metal clash (the hit) + knife scrape ("shhing") + faint air
+    "sfx_slice_1": [("weapons", "sfx/sword-knife-clash-16.wav", 0.9, 0.0),
+                    ("weapons", "sfx/knife-unsheathe-04.wav", 0.8, 0.0),
+                    ("swish", "swishes/swish-3.wav", 0.25, 0.0), 0.75],
+    "sfx_slice_2": [("weapons", "sfx/sword-knife-clash-15.wav", 0.9, 0.0),
+                    ("weapons", "sfx/knife-unsheathe-03.wav", 0.8, 0.0),
+                    ("swish", "swishes/swish-7.wav", 0.25, 0.0), 0.75],
+    "sfx_slice_3": [("weapons", "sfx/sword-knife-clash-29.wav", 0.9, 0.0),
+                    ("swords", "sword - StarNinjas/sword.6.ogg", 0.8, 0.0),
+                    ("swish", "swishes/swish-9.wav", 0.25, 0.0), 0.68],
+    "sfx_whoosh_1": ("swish", "swishes/swish-1.wav", 0.75),
+    "sfx_whoosh_2": ("swish", "swishes/swish-5.wav", 0.75),
+    "sfx_explosion": ("sfx512", SFX512 + "Explosions/Long/sfx_exp_long4.wav", 1.0),
     "sfx_countdown_beep": ("synth", "synth_beep_01.ogg", 0.6),
     "sfx_countdown_go": ("synth", "power_up_01.ogg", 0.7),
     "sfx_sword_draw": ("rpg", "blade_01.ogg", 0.8),
@@ -90,15 +108,38 @@ def main():
 
     zips = {k: zipfile.ZipFile(fetch(v[0], os.path.join(dl, k + ".zip"))) for k, v in PACKS.items()}
     rows = []
-    for name, (pack, inner, gain) in SOUNDS.items():
-        with zips[pack].open(inner) as f:
-            data, sr = sf.read(f, always_2d=True)
-        out = convert(data, sr, gain, name.startswith("music"))
+    for name, spec in SOUNDS.items():
+        layers = spec[:-1] if isinstance(spec, list) else [(spec[0], spec[1], 1.0, 0.0)]
+        gain = spec[-1] if isinstance(spec, list) else spec[2]
+        mix = None
+        for pack, inner, lgain, offset in layers:
+            with zips[pack].open(inner) as f:
+                data, sr = sf.read(f, always_2d=True)
+            part = convert(data, sr, lgain, name.startswith("music"))
+            if part.shape[1] == 1:
+                part = np.repeat(part, 2, axis=1)
+            pad = int(offset * SR)
+            n = max(0 if mix is None else len(mix), pad + len(part))
+            new = np.zeros((n, 2), np.float32)
+            if mix is not None:
+                new[:len(mix)] += mix
+            new[pad:pad + len(part)] += part[:, :2]
+            mix = new
+        if name.startswith("sfx_slice") and len(mix) > SLICE_MAX * SR:
+            mix = mix[:int(SLICE_MAX * SR)]
+            f = int(SLICE_FADE * SR)
+            mix[-f:] *= np.linspace(1, 0, f)[:, None]
+        if name.startswith("sfx_slice"):
+            mix = mix / (np.abs(mix).max() or 1.0)
+            mix = np.tanh(SLICE_DRIVE * mix) / np.tanh(SLICE_DRIVE)
+        out = (mix / (np.abs(mix).max() or 1.0) * gain).astype(np.float32)
         path = os.path.join(ROOT, "sounds", name + ".ogg")
         sf.write(path, out, SR, format="OGG", subtype="VORBIS")
-        print(f"wrote sounds/{name}.ogg  {len(out) / SR:.2f}s  <- {os.path.basename(inner)}")
-        _, page, title, author, lic = PACKS[pack]
-        rows.append(f"| `sounds/{name}.ogg` | {title}: `{os.path.basename(inner)}` | {author} | {lic} | {page} |")
+        srcs = " + ".join(os.path.basename(l[1]) for l in layers)
+        print(f"wrote sounds/{name}.ogg  {len(out) / SR:.2f}s  <- {srcs}")
+        for pack, inner, *_ in layers:
+            _, page, title, author, lic = PACKS[pack]
+            rows.append(f"| `sounds/{name}.ogg` | {title}: `{os.path.basename(inner)}` | {author} | {lic} | {page} |")
 
     fetch(FONT_URL, os.path.join(ROOT, "fonts", "PressStart2P-Regular.ttf"))
     fetch(FONT_LICENSE_URL, os.path.join(ROOT, "fonts", "OFL.txt"))
