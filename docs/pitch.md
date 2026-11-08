@@ -1,6 +1,7 @@
 # Pitch (2:30) and live demo flow
 
 > Owner: RBadiadka7. Roles are decided at rehearsal 1; defaults below. Times are cumulative.
+> The judging slot is **3 minutes** in front of the incident.io judges (WHACK 2026 rules), so 2:30 leaves 30 s of slack.
 > Words in **bold** are cues for the player. Never say "trained model".
 
 ## Roles (default)

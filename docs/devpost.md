@@ -1,8 +1,16 @@
 # Devpost draft: GRIP-9000
 
-> Owner: RBadiadka7. Paste each section into Devpost. **TODO before 10:30:** check the WHACK 26 Devpost rules
-> (video length, how to enter the incident.io challenge, required fields) and fill in the `[[...]]` numbers
-> from `results/` after the reliability check. Never call the grip detection a "trained model".
+> Owner: RBadiadka7. Paste each section into Devpost (https://whack-2026.devpost.com). Fill in the `[[...]]`
+> numbers from `results/` after the reliability check. Never call the grip detection a "trained model".
+>
+> **Rules (checked on the WHACK 2026 Devpost, 8 Nov):** deadline 11:00 GMT; must have a **team name**; **all
+> four collaborators linked** to the Devpost project; built during the hackathon; must have attempted ONE title
+> sponsor problem statement (we pick **incident.io**). Submit "with plenty of images". **No video is required.**
+> Judging is a **3 minute slot** presenting to the chosen sponsor in the afternoon (live demo, slides, anything).
+> We're also automatically in WHACKiest Hack and Most Creative.
+
+## Team name
+GRIP-9000 (change if the team prefers another)
 
 ## Project name
 GRIP-9000: Fruit Ninja with a real sword grip and a rival who never shuts up
@@ -58,7 +66,7 @@ One Python 3.11 program, three threads talking through small shared interfaces:
 
 ## Links
 - Code: https://github.com/AnanthIyer21/whack-26
-- Video: [[YouTube unlisted link]]
+- Video (optional, not required by the rules): [[YouTube unlisted link]]
 
 ## Team
 Aaron (vision), Pricysquirrl (game), RBadiadka7 (art and sound, reliability, demo), Ananth (integration, testing, the rival). **Add all four to the Devpost project.**

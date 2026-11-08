@@ -1,6 +1,7 @@
 # Demo video: script and shot list
 
-> Owner: RBadiadka7. **Target length: 1:45 (assumed max 2:00; CHECK the WHACK 26 Devpost rules).**
+> Owner: RBadiadka7. **Target length: 1:45.** The WHACK 2026 rules do **not** require a video (judging is a
+> 3 minute live slot), so this is a nice-to-have for Devpost and, more importantly, the backup if the live demo dies.
 > Record 08:00 to 08:45 Sunday on the demo laptop; edit in iMovie; upload to YouTube as **Unlisted**;
 > put the link in Devpost. **Never commit the video** (it's gitignored; keep it on the desktop + USB as the live-demo backup).
 
