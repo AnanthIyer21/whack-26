@@ -15,7 +15,6 @@ Keys:  Q / Esc quit   P print current tunables (paste them into vision/config.py
        R reset the dropout / grip counters
        B switch blade mode: grip (across the fist) <-> knuckle (wrist -> knuckle)
        Up / Down pick a tunable, Left / Right change it (hold Shift for big steps)
-       C counter mode (reliability check, coming in step 6)
 """
 import argparse
 import math
