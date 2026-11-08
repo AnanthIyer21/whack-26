@@ -24,6 +24,7 @@ from ..geometry import circle_hits_quad
 from ..hud import Hud
 from ..rival_ui import RivalDisplay
 from ..scoring import Score
+from .. import sfx
 from ..spawner import Spawner
 from ..storage import load_best, save_best
 from ..ui import Button, fist_ring
@@ -194,7 +195,10 @@ class PlayScene:
         if self.phase == "resuming":
             self.blade.update(s, now)     # katana follows your fist while the ring fills
             self.blade.take_sweeps()      # ...but can't cut until play resumes
+        prev_cd = self.cd
         self.cd += dt
+        if self.phase == "countdown":
+            sfx.countdown(prev_cd, self.cd, self._cd_total())   # 3-2-1 beeps (RBadiadka7)
         if self.cd < self._cd_total():
             return
         # GO!
